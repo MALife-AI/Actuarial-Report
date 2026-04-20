@@ -1,0 +1,19 @@
+● v1.0.0 버전 설정 완료.
+
+  만든 것
+
+  - Git 저장소 초기화 — main 브랜치, 커밋 c6d711a, 태그 v1.0.0
+  - VERSION — 1.0.0 한 줄 (프로그램에서 읽기 쉬운 형식)
+  - CHANGELOG.md — Keep a Changelog + SemVer 형식, 현재 상태를 v1.0.0 릴리스로 기록        
+  - .gitignore — node_modules, OS 메타파일, IDE 캐시 제외
+
+  앞으로 사용법
+
+  - 변경 후 커밋: git add -A && git commit -m "feat: ..." (Conventional Commits 권장 —     
+  feat/fix/chore/docs/refactor)
+  - 다음 버전 릴리스 시점에:
+    a. VERSION 파일 숫자 올리기 (예: 1.1.0)
+    b. CHANGELOG.md에 새 섹션 추가
+    c. 커밋 후 git tag -a v1.1.0 -m "..."
+  - 특정 버전으로 롤백: git checkout v1.0.0
+  - 버전 간 비교: git diff v1.0.0 v1.1.0
