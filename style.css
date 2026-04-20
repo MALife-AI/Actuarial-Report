@@ -1,0 +1,668 @@
+/* ===================================================================
+ * Mirae Asset Life Insurance — Actuarial Report Dashboard
+ * 미래에셋 공식 디지털 가이드라인(2020.04) 준수
+ * - 주색상: Orange #F58220, Blue #043B72
+ * - 서체: Spoqa Han Sans Neo (Regular/Bold/Light)
+ * =================================================================== */
+
+:root {
+  /* === 미래에셋 공식 색상 === */
+  --ma-orange:        #F58220;
+  --ma-orange-light:  #FAAF72;
+  --ma-orange-dark:   #CB6015;
+  --ma-blue:          #043B72;
+  --ma-blue-light:    #7F9FC3;
+  --ma-blue-sky:      #8DC8F8;
+  --ma-cyan:          #00A9CF;
+  --ma-medium-blue:   #0086B8;
+
+  /* 보조 그레이 */
+  --ma-dark-gray:     #48535B;
+  --ma-medium-gray:   #84888B;
+  --ma-light-gray:    #A0A6A8;
+  --ma-pale-gray:     #CDCECB;
+  --ma-bg-gray:       #E5E4E1;
+  --ma-footer-bg:     #ECEFF4;
+
+  /* 시스템 컬러 */
+  --ma-beige:         #C2AC97;
+  --positive:         #1f8f4f;
+  --negative:         #d93025;
+
+  /* 구조 */
+  --radius:           6px;
+  --radius-sm:        4px;
+  --border-soft:      #E5E4E1;
+  --border-strong:    #CDCECB;
+
+  /* 서체 */
+  --font-primary: 'Spoqa Han Sans Neo', 'Spoqa Han Sans', 'Malgun Gothic', '맑은 고딕', sans-serif;
+}
+
+/* 드래그 선택 (미래에셋 가이드라인) */
+::selection { background: var(--ma-orange); color: #fff; }
+::-moz-selection { background: var(--ma-orange); color: #fff; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  font-family: var(--font-primary);
+  background: #F7F8FA;
+  color: var(--ma-dark-gray);
+  min-height: 100vh;
+  line-height: 1.5;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+ * 헤더 (Mirae Asset Type A — Orange #F58220)
+ * ============================================================ */
+.header {
+  background: var(--ma-orange);
+  padding: 14px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(4, 59, 114, 0.08);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-logo {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+.header-divider {
+  display: inline-block;
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.3px;
+}
+
+.header-right {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+/* 필터 */
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-group label {
+  font-size: 12px;
+  color: #FFFFFF;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.filter-group select {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
+  font-size: 12px;
+  font-family: var(--font-primary);
+  cursor: pointer;
+  min-width: 88px;
+  transition: background 0.15s;
+}
+
+.filter-group select:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.filter-group select option {
+  background: #FFFFFF;
+  color: var(--ma-blue);
+}
+
+/* ============================================================
+ * 서브 헤더
+ * ============================================================ */
+.sub-header {
+  padding: 14px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FFFFFF;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.sub-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ma-blue);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sub-title .icon {
+  width: 4px;
+  height: 18px;
+  background: var(--ma-orange);
+  display: inline-block;
+  border-radius: 1px;
+}
+
+.sub-title-en {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ma-medium-gray);
+  margin-left: 4px;
+}
+
+.period-label {
+  font-size: 13px;
+  color: var(--ma-dark-gray);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.unit-label {
+  font-size: 12px;
+  color: var(--ma-medium-gray);
+  padding-left: 14px;
+  border-left: 1px solid var(--border-strong);
+}
+
+/* ============================================================
+ * 메인 콘텐츠 (당월 + 당해 누적 2단)
+ * ============================================================ */
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 24px 32px 16px;
+}
+
+/* ============================================================
+ * 패널 공통
+ * ============================================================ */
+.panel {
+  background: #FFFFFF;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(4, 59, 114, 0.04);
+}
+
+.panel h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ma-blue);
+  margin-bottom: 14px;
+  padding-left: 10px;
+  border-left: 3px solid var(--ma-orange);
+  line-height: 1.2;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.panel-header h2 { margin-bottom: 0; }
+
+.period-tag {
+  font-size: 11px;
+  color: var(--ma-blue);
+  background: var(--ma-footer-bg);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+/* ============================================================
+ * P&L 테이블
+ * ============================================================ */
+.table-wrapper {
+  overflow-x: auto;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+thead th {
+  background: var(--ma-blue);
+  color: #FFFFFF;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  font-size: 12px;
+}
+
+thead th.num { text-align: right; }
+
+tbody tr {
+  border-bottom: 1px solid var(--border-soft);
+  transition: background 0.15s;
+}
+
+tbody tr:hover { background: #FFF8EF; }
+
+tbody td {
+  padding: 8px 12px;
+  white-space: nowrap;
+  color: var(--ma-dark-gray);
+}
+
+tbody td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+tbody td.num.neg { color: var(--negative); }
+
+/* 섹션 헤더 (보험수익 / 보험서비스비용) */
+tbody tr.section-header td {
+  background: var(--ma-footer-bg);
+  color: var(--ma-blue);
+  font-weight: 700;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-strong);
+  font-size: 12.5px;
+}
+
+/* 구분2 들여쓰기 */
+tbody td.indent {
+  padding-left: 28px;
+  color: var(--ma-medium-gray);
+  font-weight: 400;
+}
+
+/* 소계 행 */
+tbody tr.subtotal {
+  background: rgba(250, 175, 114, 0.12);
+  font-weight: 700;
+  border-top: 1px solid var(--ma-orange-light);
+}
+
+tbody tr.subtotal td {
+  padding-top: 9px;
+  padding-bottom: 9px;
+  color: var(--ma-blue);
+}
+
+/* 최종 합계 행 (보험손익 차감후) */
+tbody tr.total-row {
+  background: var(--ma-blue);
+  font-weight: 700;
+}
+
+tbody tr.total-row td {
+  color: #FFFFFF;
+  padding-top: 11px;
+  padding-bottom: 11px;
+  font-size: 13px;
+  border-bottom: none;
+}
+
+tbody tr.total-row td.num.neg { color: var(--ma-orange-light); }
+
+/* P&L 테이블 전용 열 폭 */
+.pnl-table th,
+.pnl-table td { font-size: 12.5px; }
+
+.pnl-table th.num,
+.pnl-table td.num {
+  width: 14%;
+  min-width: 74px;
+}
+
+/* ============================================================
+ * 하단 영역 (12개월 월별 추이)
+ * ============================================================ */
+.bottom-content {
+  padding: 0 32px 20px;
+}
+
+.full-panel {
+  background: #FFFFFF;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(4, 59, 114, 0.04);
+}
+
+.full-panel h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ma-blue);
+  margin-bottom: 16px;
+  padding-left: 10px;
+  border-left: 3px solid var(--ma-orange);
+  line-height: 1.2;
+}
+
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 320px;
+}
+
+.chart-trend {
+  height: 280px;
+  margin-bottom: 16px;
+}
+
+/* 월별 추이 하단 데이터 테이블 */
+.trend-table-wrapper {
+  overflow-x: auto;
+  border-top: 1px solid var(--border-soft);
+  padding-top: 14px;
+}
+
+.trend-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.trend-table thead th {
+  background: var(--ma-footer-bg);
+  color: var(--ma-blue);
+  padding: 8px 10px;
+  font-weight: 700;
+  border-bottom: 2px solid var(--ma-orange);
+  white-space: nowrap;
+  font-size: 11.5px;
+}
+
+.trend-table thead th.num {
+  text-align: right;
+  min-width: 58px;
+}
+
+.trend-table tbody td {
+  padding: 7px 10px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ma-dark-gray);
+}
+
+.trend-table tbody td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-table tbody td.num.neg { color: var(--negative); }
+
+.trend-table tbody tr:hover { background: #FFF8EF; }
+
+.trend-table tbody tr.total-row {
+  background: rgba(4, 59, 114, 0.06);
+  font-weight: 700;
+}
+
+.trend-table tbody tr.total-row td { color: var(--ma-blue); }
+
+/* ============================================================
+ * 푸터 (Mirae Asset Footer — Blue)
+ * ============================================================ */
+.footer {
+  margin-top: 24px;
+  background: var(--ma-blue);
+  color: #FFFFFF;
+}
+
+.footer-top {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 22px 32px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-logo {
+  height: 24px;
+  width: auto;
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
+
+.footer-contact {
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.footer-contact strong {
+  color: var(--ma-orange-light);
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.footer-bottom {
+  padding: 12px 32px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.3px;
+}
+
+/* ============================================================
+ * 반응형
+ * ============================================================ */
+@media (max-width: 1024px) {
+  .main-content { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .header {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+  .header-right { flex-wrap: wrap; }
+  .main-content,
+  .bottom-content { padding-left: 16px; padding-right: 16px; }
+  .sub-header { padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .footer-top { flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px 16px 14px; }
+  .footer-bottom { padding: 10px 16px; }
+}
+
+/* ============================================================
+ * 챗봇 (미래에셋 브랜드 적용)
+ * ============================================================ */
+#chat-fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ma-orange);
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(245, 130, 32, 0.4);
+  z-index: 1000;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#chat-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 8px 28px rgba(245, 130, 32, 0.5);
+}
+
+#chat-fab.chat-fab-active {
+  background: var(--ma-blue);
+  box-shadow: 0 6px 20px rgba(4, 59, 114, 0.4);
+}
+
+#chat-panel {
+  position: fixed;
+  bottom: 96px;
+  right: 28px;
+  width: 380px;
+  max-height: 520px;
+  background: #FFFFFF;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(4, 59, 114, 0.18);
+  overflow: hidden;
+}
+
+#chat-panel.chat-hidden { display: none; }
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--ma-orange);
+  color: #fff;
+}
+
+.chat-header-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+#chat-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+#chat-close:hover { opacity: 0.7; }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 380px;
+  min-height: 200px;
+  background: #FAFBFC;
+}
+
+.chat-msg {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.chat-user {
+  align-self: flex-end;
+  background: var(--ma-blue);
+  color: #FFFFFF;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-bot {
+  align-self: flex-start;
+  background: var(--ma-footer-bg);
+  color: var(--ma-dark-gray);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-soft);
+  background: #FFFFFF;
+}
+
+#chat-input {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: #FFFFFF;
+  color: var(--ma-dark-gray);
+  font-size: 13px;
+  font-family: var(--font-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+#chat-input:focus { border-color: var(--ma-orange); }
+
+#chat-send {
+  padding: 9px 16px;
+  border-radius: 6px;
+  border: none;
+  background: var(--ma-orange);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#chat-send:hover { background: var(--ma-orange-dark); }
+
+.chat-messages::-webkit-scrollbar { width: 5px; }
+.chat-messages::-webkit-scrollbar-track { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+@media (max-width: 500px) {
+  #chat-panel {
+    right: 8px;
+    left: 8px;
+    bottom: 88px;
+    width: auto;
+  }
+}

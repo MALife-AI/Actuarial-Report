@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actuarial Report - Insurance P&L</title>
+  <!-- Spoqa Han Sans (미래에셋 주서체) -->
+  <link href="https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css" rel="stylesheet" type="text/css">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===== 헤더 영역 (Mirae Asset Type A) ===== -->
+  <header class="header">
+    <div class="header-left">
+      <img src="assets/logo/ma-logo-on-orange.png" alt="Mirae Asset Life Insurance" class="header-logo">
+      <span class="header-divider"></span>
+      <h1>Actuarial Report</h1>
+    </div>
+    <div class="header-right">
+      <div class="filter-group">
+        <label for="filter-model">회계모형</label>
+        <select id="filter-model">
+          <option value="ALL">전체</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-cat1">구분</label>
+        <select id="filter-cat1">
+          <option value="ALL">전체</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== 서브 타이틀 ===== -->
+  <section class="sub-header">
+    <div class="sub-title">
+      <span class="icon"></span>보험손익 <span class="sub-title-en">Insurance P&L</span>
+    </div>
+    <div class="period-label">
+      <span id="period-label">2025년</span>
+      <span class="unit-label">단위 : 억</span>
+    </div>
+  </section>
+
+  <!-- ===== 메인: 당월 + 당해 누적 ===== -->
+  <section class="main-content">
+
+    <!-- 1.당월 -->
+    <div class="panel table-panel">
+      <div class="panel-header">
+        <h2>1.당월</h2>
+        <span class="period-tag" id="current-month-tag">-</span>
+      </div>
+      <div class="table-wrapper">
+        <table id="current-month-table" class="pnl-table">
+          <thead>
+            <tr>
+              <th>구분</th>
+              <th class="num">NP</th>
+              <th class="num">IDP</th>
+              <th class="num">VFA</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody id="current-month-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2.당해 누적 -->
+    <div class="panel table-panel">
+      <div class="panel-header">
+        <h2>2.당해 누적</h2>
+        <span class="period-tag" id="ytd-tag">-</span>
+      </div>
+      <div class="table-wrapper">
+        <table id="ytd-table" class="pnl-table">
+          <thead>
+            <tr>
+              <th>구분</th>
+              <th class="num">NP</th>
+              <th class="num">IDP</th>
+              <th class="num">VFA</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody id="ytd-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ===== 3.최근 12개월 월별 추이 ===== -->
+  <section class="bottom-content">
+    <div class="full-panel">
+      <h2>3.최근 12개월 월별 추이</h2>
+      <div class="chart-container chart-trend">
+        <canvas id="trendChart"></canvas>
+      </div>
+      <div class="trend-table-wrapper">
+        <table id="trend-table" class="trend-table">
+          <thead>
+            <tr id="trend-thead-row">
+              <th>구분</th>
+              <!-- 월 헤더는 JS에서 동적 생성 -->
+            </tr>
+          </thead>
+          <tbody id="trend-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 푸터 (Mirae Asset) ===== -->
+  <footer class="footer">
+    <div class="footer-top">
+      <img src="assets/logo/ma-logo-color.png" alt="Mirae Asset Life Insurance" class="footer-logo">
+      <div class="footer-contact">
+        <div><strong>고객센터</strong> 1588-0220</div>
+        <div>서울특별시 중구 을지로5길 26 미래에셋센터원 이스트타워 26층</div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>Copyright &copy; 2025 Mirae Asset Life Insurance Co., Ltd. All Rights Reserved.</span>
+    </div>
+  </footer>
+
+  <!-- 메인 스크립트 -->
+  <script src="app.js"></script>
+  <script src="chatbot.js"></script>
+</body>
+</html>
