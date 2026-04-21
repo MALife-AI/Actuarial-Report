@@ -1,7 +1,7 @@
 /**
  * ===================================================================
  * Insurance P&L Dashboard - app.js
- * CSV → 당월 / 당해 누적 / 최근 12개월 월별 추이 렌더링
+ * XLSX → 당월 / 당해 누적 / 최근 12개월 월별 추이 렌더링
  * ===================================================================
  */
 
@@ -16,54 +16,32 @@ const SECTIONS = ['보험수익', '보험서비스비용']; // 상세 행 구분
 const INDIRECT_KEY = '간접사업비';
 
 /* ================================================================
- * 1. CSV 파싱
+ * 1. XLSX 파싱 (SheetJS 사용)
  * ================================================================ */
-function parseCSV(text) {
-  const lines = text.replace(/^\uFEFF/, '').trim().split('\n');
-  return lines.slice(1).map(line => {
-    const cols = line.split(',');
-    return {
-      마감년도: cols[0],
-      마감년월: cols[1],
+function parseXLSX(buffer) {
+  const wb = XLSX.read(buffer, { type: 'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  return rows.slice(1)
+    .filter(cols => cols && cols.length > 0 && cols[0] !== '')
+    .map(cols => ({
+      마감년도: String(cols[0]),
+      마감년월: String(cols[1]),
       회계모형: cols[2],
       구분:     cols[3],
       구분2:    cols[4],
       금액:     parseFloat(cols[5]) || 0,
-    };
-  });
+    }));
 }
 
 /* ================================================================
  * 2. 필터
  * ================================================================ */
 function initFilters() {
-  const models = [...new Set(rawData.map(d => d.회계모형))].sort();
-  const cats   = [...new Set(rawData.map(d => d.구분))].sort();
-
-  const modelSel = document.getElementById('filter-model');
-  const catSel   = document.getElementById('filter-cat1');
-
-  modelSel.innerHTML = '<option value="ALL">전체</option>';
-  catSel.innerHTML   = '<option value="ALL">전체</option>';
-
-  models.forEach(m => modelSel.innerHTML += `<option value="${m}">${m}</option>`);
-  cats.forEach(c => catSel.innerHTML += `<option value="${c}">${c}</option>`);
-
-  modelSel.addEventListener('change', applyFilters);
-  catSel.addEventListener('change', applyFilters);
-}
-
-function applyFilters() {
-  const model = document.getElementById('filter-model').value;
-  const cat   = document.getElementById('filter-cat1').value;
-
-  filteredData = rawData.filter(d => {
-    if (model !== 'ALL' && d.회계모형 !== model) return false;
-    if (cat   !== 'ALL' && d.구분     !== cat)   return false;
-    return true;
-  });
-
-  renderAll();
+  // 당월(최신 마감년월)을 헤더에 표시
+  const latestYm = rawData.reduce((mx, d) => d.마감년월 > mx ? d.마감년월 : mx, '000000');
+  const ymEl = document.getElementById('current-yearmonth');
+  if (ymEl) ymEl.textContent = latestYm;
 }
 
 function renderAll() {
@@ -71,7 +49,6 @@ function renderAll() {
   const latestYear = latestYm.slice(0, 4);
   const latestMonth = parseInt(latestYm.slice(4), 10);
 
-  document.getElementById('period-label').textContent = `${latestYear}년`;
   document.getElementById('current-month-tag').textContent = `${latestYear}.${String(latestMonth).padStart(2, '0')}`;
   document.getElementById('ytd-tag').textContent = `${latestYear}.01 ~ ${latestYear}.${String(latestMonth).padStart(2, '0')}`;
 
@@ -117,6 +94,9 @@ function renderPnLTable(data, tbodyId) {
       addToRow(sub, v);
       appendDetailRow(tbody, name, v);
     });
+
+    // 섹션 합계 행
+    appendSumRow(tbody, `${sectionKey} 합계`, sub, 'subtotal');
 
     sectionSubtotals[sectionKey] = sub;
   });
@@ -316,13 +296,13 @@ function formatInt(n) {
  * 6. 초기화
  * ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
-  fetch('data/sales_data_sample.csv')
+  fetch('data/sample_data1.xlsx')
     .then(res => {
-      if (!res.ok) throw new Error('CSV 파일을 불러올 수 없습니다.');
-      return res.text();
+      if (!res.ok) throw new Error('XLSX 파일을 불러올 수 없습니다.');
+      return res.arrayBuffer();
     })
-    .then(text => {
-      rawData = parseCSV(text);
+    .then(buf => {
+      rawData = parseXLSX(buf);
       filteredData = [...rawData];
       initFilters();
       renderAll();

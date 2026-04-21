@@ -8,6 +8,10 @@
   <link href="https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css" rel="stylesheet" type="text/css">
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <!-- SheetJS (xlsx 파서) CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Claude 래퍼 엔드포인트 (래퍼는 :3001) -->
+  <script>window.CLAUDE_WRAPPER_URL = 'http://localhost:3001';</script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,16 +25,8 @@
     </div>
     <div class="header-right">
       <div class="filter-group">
-        <label for="filter-model">회계모형</label>
-        <select id="filter-model">
-          <option value="ALL">전체</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label for="filter-cat1">구분</label>
-        <select id="filter-cat1">
-          <option value="ALL">전체</option>
-        </select>
+        <label>마감년월</label>
+        <span id="current-yearmonth" class="filter-value">-</span>
       </div>
     </div>
   </header>
@@ -41,7 +37,6 @@
       <span class="icon"></span>보험손익 <span class="sub-title-en">Insurance P&L</span>
     </div>
     <div class="period-label">
-      <span id="period-label">2025년</span>
       <span class="unit-label">단위 : 억</span>
     </div>
   </section>

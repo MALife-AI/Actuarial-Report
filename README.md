@@ -8,12 +8,12 @@
 |------|------|
 | `index.html` | 대시보드 메인 페이지 |
 | `style.css` | 스타일시트 (다크 테마) |
-| `app.js` | CSV 파싱, 필터, 차트 렌더링 로직 |
-| `data/sales_data_sample.csv` | 샘플 데이터 (1,000건) |
+| `app.js` | XLSX 파싱, 필터, 차트 렌더링 로직 |
+| `data/sample_data1.xlsx` | 샘플 데이터 (804건) |
 
 ## 실행 방법
 
-CSV를 `fetch()`로 읽기 때문에 **로컬 서버**가 필요합니다.
+XLSX 파일을 `fetch()`로 읽기 때문에 **로컬 서버**가 필요합니다.
 
 ### 방법 1: npx serve (권장)
 

@@ -136,6 +136,19 @@ html, body {
   color: var(--ma-blue);
 }
 
+.filter-group .filter-value {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.18);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  min-width: 72px;
+  text-align: center;
+}
+
 /* ============================================================
  * 서브 헤더
  * ============================================================ */
@@ -558,6 +571,51 @@ tbody tr.total-row td.num.neg { color: var(--ma-orange-light); }
   padding: 14px 18px;
   background: var(--ma-orange);
   color: #fff;
+  user-select: none;
+  touch-action: none;
+}
+
+.chat-header.chat-header-draggable {
+  cursor: grab;
+}
+
+.chat-header.chat-header-dragging {
+  cursor: grabbing;
+}
+
+/* 스트리밍 커서 */
+.chat-cursor {
+  display: inline-block;
+  color: var(--ma-orange);
+  font-weight: bold;
+  animation: chat-blink 1s step-end infinite;
+  margin-left: 2px;
+}
+@keyframes chat-blink {
+  50% { opacity: 0; }
+}
+
+/* 챗 메시지 내 코드/블록 */
+.chat-msg code {
+  background: rgba(4, 59, 114, 0.06);
+  color: var(--ma-blue);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 12px;
+}
+.chat-msg pre.chat-pre {
+  background: #F4F6F8;
+  color: #2A323C;
+  padding: 8px 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 6px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .chat-header-title {

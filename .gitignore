@@ -6,3 +6,6 @@ Thumbs.db
 .idea/
 *.swp
 *.tmp
+
+# Claude Code local settings
+.claude/
