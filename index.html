@@ -22,94 +22,191 @@
       <img src="assets/logo/ma-logo-on-orange.png" alt="Mirae Asset Life Insurance" class="header-logo">
       <span class="header-divider"></span>
       <h1>Actuarial Report</h1>
+      <div class="filter-group header-ym">
+        <label>마감년월</label>
+        <select id="current-yearmonth"></select>
+      </div>
     </div>
     <div class="header-right">
-      <div class="filter-group">
-        <label>마감년월</label>
-        <span id="current-yearmonth" class="filter-value">-</span>
-      </div>
+      <nav class="tab-nav">
+        <button class="tab-btn tab-active" data-tab="pnl">보험손익</button>
+        <button class="tab-btn" data-tab="financial">보험금융손익</button>
+        <button class="tab-btn" data-tab="variance">예실차</button>
+      </nav>
     </div>
   </header>
 
-  <!-- ===== 서브 타이틀 ===== -->
-  <section class="sub-header">
-    <div class="sub-title">
-      <span class="icon"></span>보험손익 <span class="sub-title-en">Insurance P&L</span>
-    </div>
-    <div class="period-label">
-      <span class="unit-label">단위 : 억</span>
-    </div>
-  </section>
+  <!-- ===================================================================
+       TAB 1: 보험손익 (Insurance P&L)
+       =================================================================== -->
+  <div id="tab-pnl" class="tab-panel tab-panel-active">
+    <section class="sub-header">
+      <div class="sub-title">
+        <span class="icon"></span>보험손익 <span class="sub-title-en">Insurance P&L</span>
+      </div>
+      <div class="period-label">
+        <span class="unit-label">단위 : 억</span>
+      </div>
+    </section>
 
-  <!-- ===== 메인: 당월 + 당해 누적 ===== -->
-  <section class="main-content">
+    <section class="main-content">
+      <!-- 1.당월 -->
+      <div class="panel table-panel">
+        <div class="panel-header">
+          <h2>1.당월</h2>
+          <span class="period-tag" id="current-month-tag">-</span>
+        </div>
+        <div class="table-wrapper">
+          <table id="current-month-table" class="pnl-table">
+            <thead>
+              <tr>
+                <th>구분</th>
+                <th class="num">NP</th>
+                <th class="num">IDP</th>
+                <th class="num">VFA</th>
+                <th class="num">Total</th>
+              </tr>
+            </thead>
+            <tbody id="current-month-tbody"></tbody>
+          </table>
+        </div>
+      </div>
 
-    <!-- 1.당월 -->
-    <div class="panel table-panel">
-      <div class="panel-header">
-        <h2>1.당월</h2>
-        <span class="period-tag" id="current-month-tag">-</span>
+      <!-- 2.당해 누적 -->
+      <div class="panel table-panel">
+        <div class="panel-header">
+          <h2>2.당해 누적</h2>
+          <span class="period-tag" id="ytd-tag">-</span>
+        </div>
+        <div class="table-wrapper">
+          <table id="ytd-table" class="pnl-table">
+            <thead>
+              <tr>
+                <th>구분</th>
+                <th class="num">NP</th>
+                <th class="num">IDP</th>
+                <th class="num">VFA</th>
+                <th class="num">Total</th>
+              </tr>
+            </thead>
+            <tbody id="ytd-tbody"></tbody>
+          </table>
+        </div>
       </div>
-      <div class="table-wrapper">
-        <table id="current-month-table" class="pnl-table">
-          <thead>
-            <tr>
-              <th>구분</th>
-              <th class="num">NP</th>
-              <th class="num">IDP</th>
-              <th class="num">VFA</th>
-              <th class="num">Total</th>
-            </tr>
-          </thead>
-          <tbody id="current-month-tbody"></tbody>
-        </table>
-      </div>
-    </div>
+    </section>
 
-    <!-- 2.당해 누적 -->
-    <div class="panel table-panel">
-      <div class="panel-header">
-        <h2>2.당해 누적</h2>
-        <span class="period-tag" id="ytd-tag">-</span>
+    <section class="bottom-content">
+      <div class="full-panel">
+        <h2>3.보험수익(최근 12개월 추이)</h2>
+        <div class="chart-container chart-trend">
+          <canvas id="trendChart"></canvas>
+        </div>
+        <div class="trend-table-wrapper">
+          <table id="trend-table" class="trend-table">
+            <thead>
+              <tr id="trend-thead-row">
+                <th>구분</th>
+              </tr>
+            </thead>
+            <tbody id="trend-tbody"></tbody>
+          </table>
+        </div>
       </div>
-      <div class="table-wrapper">
-        <table id="ytd-table" class="pnl-table">
-          <thead>
-            <tr>
-              <th>구분</th>
-              <th class="num">NP</th>
-              <th class="num">IDP</th>
-              <th class="num">VFA</th>
-              <th class="num">Total</th>
-            </tr>
-          </thead>
-          <tbody id="ytd-tbody"></tbody>
-        </table>
-      </div>
-    </div>
+    </section>
+  </div>
 
-  </section>
+  <!-- ===================================================================
+       TAB 2: 보험금융손익 (Insurance Financial P&L)
+       =================================================================== -->
+  <div id="tab-financial" class="tab-panel">
+    <section class="sub-header">
+      <div class="sub-title">
+        <span class="icon"></span>보험금융손익 <span class="sub-title-en">Insurance financial P/L</span>
+      </div>
+      <div class="period-label">
+        <span class="unit-label">단위 : 억</span>
+      </div>
+    </section>
 
-  <!-- ===== 3.최근 12개월 월별 추이 ===== -->
-  <section class="bottom-content">
-    <div class="full-panel">
-      <h2>3.최근 12개월 월별 추이</h2>
-      <div class="chart-container chart-trend">
-        <canvas id="trendChart"></canvas>
+    <section class="financial-grid">
+      <!-- 왼쪽 열: 섹션 1, 2, 3 -->
+      <div class="financial-left">
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>1. NP(Non-Participation)</h2></div>
+          <div class="table-wrapper"><table id="fin-np-table" class="fin-table"><thead id="fin-np-thead"></thead><tbody id="fin-np-tbody"></tbody></table></div>
+        </div>
+
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>2. IDP(Indirect Participation)</h2></div>
+          <div class="table-wrapper"><table id="fin-idp-table" class="fin-table"><thead id="fin-idp-thead"></thead><tbody id="fin-idp-tbody"></tbody></table></div>
+        </div>
+
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>3. VFA(Variable Fee Approach) 변액연금/변액저축/변액사망/보증형IRP</h2></div>
+          <div class="table-wrapper"><table id="fin-vfa-table" class="fin-table"><thead id="fin-vfa-thead"></thead><tbody id="fin-vfa-tbody"></tbody></table></div>
+        </div>
       </div>
-      <div class="trend-table-wrapper">
-        <table id="trend-table" class="trend-table">
-          <thead>
-            <tr id="trend-thead-row">
-              <th>구분</th>
-              <!-- 월 헤더는 JS에서 동적 생성 -->
-            </tr>
-          </thead>
-          <tbody id="trend-tbody"></tbody>
-        </table>
+
+      <!-- 오른쪽 열: 섹션 4, 5 -->
+      <div class="financial-right">
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>4. 부담이자율</h2></div>
+          <div class="table-wrapper"><table id="fin-rate-table" class="fin-table"><thead id="fin-rate-thead"></thead><tbody id="fin-rate-tbody"></tbody></table></div>
+        </div>
+
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>5. 공시이율 예실차(OCI)</h2></div>
+          <div class="table-wrapper"><table id="fin-oci-table" class="fin-table"><thead id="fin-oci-thead"></thead><tbody id="fin-oci-tbody"></tbody></table></div>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </div>
+
+  <!-- ===================================================================
+       TAB 3: 예실차 (Variance Analysis)
+       =================================================================== -->
+  <div id="tab-variance" class="tab-panel">
+    <section class="sub-header">
+      <div class="sub-title">
+        <span class="icon"></span>예실차 분석 <span class="sub-title-en">Variance Analysis</span>
+      </div>
+      <div class="period-label">
+        <span class="unit-label">단위 : 억</span>
+      </div>
+    </section>
+
+    <section class="variance-grid">
+      <div class="panel table-panel">
+        <div class="panel-header"><h2>1. 지급보험금 예실차 (당월)</h2><span class="period-tag" id="var-claim-tag">-</span></div>
+        <div class="table-wrapper"><table id="var-claim-table" class="var-table"><thead id="var-claim-thead"></thead><tbody id="var-claim-tbody"></tbody></table></div>
+      </div>
+
+      <div class="panel table-panel">
+        <div class="panel-header"><h2>1-1. 지급보험금 예실차 (최근 12개월 추이)</h2></div>
+        <div class="table-wrapper"><table id="var-claim-trend-table" class="var-table"><thead id="var-claim-trend-thead"></thead><tbody id="var-claim-trend-tbody"></tbody></table></div>
+      </div>
+
+      <div class="panel table-panel">
+        <div class="panel-header"><h2>2. 사업비 예실차 (당월)</h2><span class="period-tag" id="var-expense-tag">-</span></div>
+        <div class="table-wrapper"><table id="var-expense-table" class="var-table"><thead id="var-expense-thead"></thead><tbody id="var-expense-tbody"></tbody></table></div>
+      </div>
+
+      <div class="panel table-panel">
+        <div class="panel-header"><h2>2-1. 사업비 예실차 (최근 12개월 추이)</h2></div>
+        <div class="table-wrapper"><table id="var-expense-trend-table" class="var-table"><thead id="var-expense-trend-thead"></thead><tbody id="var-expense-trend-tbody"></tbody></table></div>
+      </div>
+
+      <div class="panel table-panel">
+        <div class="panel-header"><h2>3. 기타 현금흐름 예실차 (당월)</h2><span class="period-tag" id="var-cash-tag">-</span></div>
+        <div class="table-wrapper"><table id="var-cash-table" class="var-table"><thead id="var-cash-thead"></thead><tbody id="var-cash-tbody"></tbody></table></div>
+      </div>
+
+      <div class="panel table-panel">
+        <div class="panel-header"><h2>3-1. 기타 현금흐름 예실차 (최근 12개월 추이)</h2></div>
+        <div class="table-wrapper"><table id="var-cash-trend-table" class="var-table"><thead id="var-cash-trend-thead"></thead><tbody id="var-cash-trend-tbody"></tbody></table></div>
+      </div>
+    </section>
+  </div>
 
   <!-- ===== 푸터 (Mirae Asset) ===== -->
   <footer class="footer">
@@ -127,6 +224,8 @@
 
   <!-- 메인 스크립트 -->
   <script src="app.js"></script>
+  <script src="financial.js"></script>
+  <script src="variance.js"></script>
   <script src="chatbot.js"></script>
 </body>
 </html>

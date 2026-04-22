@@ -74,6 +74,10 @@ html, body {
   gap: 16px;
 }
 
+.header-ym {
+  margin-left: 8px;
+}
+
 .header-logo {
   height: 28px;
   width: auto;
@@ -88,7 +92,7 @@ html, body {
 }
 
 .header h1 {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 700;
   color: #FFFFFF;
   letter-spacing: 0.3px;
@@ -147,6 +151,136 @@ html, body {
   letter-spacing: 0.3px;
   min-width: 72px;
   text-align: center;
+}
+
+/* ============================================================
+ * 탭 네비게이션
+ * ============================================================ */
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  margin-left: 20px;
+}
+.tab-btn {
+  padding: 7px 16px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.tab-btn.tab-active {
+  background: #FFFFFF;
+  color: var(--ma-orange);
+  border-color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.tab-panel { display: none; }
+.tab-panel.tab-panel-active { display: block; }
+
+/* ============================================================
+ * 탭 2 보험금융손익 레이아웃
+ * ============================================================ */
+.financial-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 0 16px 16px;
+}
+.financial-left, .financial-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.fin-table th, .fin-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: right;
+  white-space: nowrap;
+}
+.fin-table th:first-child, .fin-table td:first-child,
+.fin-table td.sub-label {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ma-blue);
+}
+.fin-table thead th {
+  background: #F4F6F8;
+  color: var(--ma-blue);
+  font-weight: 700;
+  border-bottom: 2px solid var(--ma-blue);
+}
+.fin-table tr.section-header td {
+  background: rgba(245, 130, 32, 0.08);
+  color: var(--ma-orange);
+  font-weight: 700;
+}
+.fin-table tr.subtotal td {
+  background: #F7F9FB;
+  font-weight: 700;
+  border-top: 1px solid var(--ma-blue);
+}
+
+.fin-table td.neg {
+  color: var(--negative);
+}
+
+/* ============================================================
+ * 탭 3 예실차 레이아웃
+ * ============================================================ */
+.variance-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 0 16px 16px;
+}
+
+.var-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.var-table th, .var-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: right;
+  white-space: nowrap;
+}
+.var-table thead th[colspan] {
+  text-align: center;
+}
+.var-table th:first-child, .var-table td:first-child,
+.var-table td.sub-label {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ma-blue);
+}
+.var-table thead th {
+  background: #F4F6F8;
+  color: var(--ma-blue);
+  font-weight: 700;
+  border-bottom: 2px solid var(--ma-blue);
+}
+.var-table td.variance-pos { color: inherit; }
+.var-table td.variance-neg { color: var(--negative); }
+.var-table tr.subtotal td {
+  background: #F7F9FB;
+  font-weight: 700;
 }
 
 /* ============================================================
@@ -255,8 +389,7 @@ html, body {
  * ============================================================ */
 .table-wrapper {
   overflow-x: auto;
-  max-height: 520px;
-  overflow-y: auto;
+  overflow-y: visible;
 }
 
 table {
@@ -350,7 +483,7 @@ tbody tr.total-row td {
   border-bottom: none;
 }
 
-tbody tr.total-row td.num.neg { color: var(--ma-orange-light); }
+tbody tr.total-row td.num.neg { color: var(--negative); }
 
 /* P&L 테이블 전용 열 폭 */
 .pnl-table th,
@@ -361,6 +494,12 @@ tbody tr.total-row td.num.neg { color: var(--ma-orange-light); }
   width: 14%;
   min-width: 74px;
 }
+
+/* 보험손익 탭: 행 간격 축소 */
+.pnl-table tbody td { padding: 2px 12px; line-height: 1.25; }
+.pnl-table tbody tr.section-header td { padding: 3px 12px; }
+.pnl-table tbody tr.subtotal td { padding-top: 3px; padding-bottom: 3px; }
+.pnl-table tbody tr.total-row td { padding-top: 4px; padding-bottom: 4px; }
 
 /* ============================================================
  * 하단 영역 (12개월 월별 추이)
@@ -551,7 +690,11 @@ tbody tr.total-row td.num.neg { color: var(--ma-orange-light); }
   bottom: 96px;
   right: 28px;
   width: 380px;
-  max-height: 520px;
+  height: 520px;
+  min-width: 320px;
+  min-height: 320px;
+  max-width: 95vw;
+  max-height: 90vh;
   background: #FFFFFF;
   border: 1px solid var(--border-soft);
   border-radius: 10px;
@@ -560,6 +703,7 @@ tbody tr.total-row td.num.neg { color: var(--ma-orange-light); }
   flex-direction: column;
   box-shadow: 0 12px 40px rgba(4, 59, 114, 0.18);
   overflow: hidden;
+  resize: both;
 }
 
 #chat-panel.chat-hidden { display: none; }
@@ -643,8 +787,7 @@ tbody tr.total-row td.num.neg { color: var(--ma-orange-light); }
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 380px;
-  min-height: 200px;
+  min-height: 0;
   background: #FAFBFC;
 }
 

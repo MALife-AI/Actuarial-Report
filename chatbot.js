@@ -74,12 +74,13 @@ function toggleChat() {
     if (chatHistory.length === 0) {
       appendBot(
         '안녕하세요! 이 챗봇은 <b>Claude</b>에 연결되어 있습니다.\n' +
-        '보험손익 데이터를 자연어로 분석해 드립니다.\n\n' +
+        '3개 탭(보험손익 / 보험금융손익 / 예실차) 데이터를 자연어로 분석해 드립니다.\n\n' +
         '예시 질문:\n' +
-        '- "당월 VFA 보험수익 얼마?"\n' +
-        '- "보험수익 월별 추이"\n' +
-        '- "CSM상각 구분2 회계모형별 비교"\n' +
-        '- "전월 대비 증감 큰 항목 Top 3"\n\n' +
+        '- "당월 VFA 보험수익 얼마?" (보험손익)\n' +
+        '- "IDP 부담이자율 추이" (보험금융손익)\n' +
+        '- "VFA 이자부리 보험금융비용 월별" (보험금융손익)\n' +
+        '- "사망 상품군 당월 예실차" (예실차)\n' +
+        '- "유지비 예실차 최근 6개월" (예실차)\n\n' +
         `<span style="color:#888;font-size:12px">🔗 래퍼 엔드포인트: ${CLAUDE_STREAM_ENDPOINT}</span>`
       );
     }
@@ -305,16 +306,16 @@ async function streamFromWrapper(prompt, onChunk, signal) {
 /** SSE 이벤트에서 텍스트 추출 (Claude Code stream-json + 래퍼 공통 스키마) */
 function extractText(evt) {
   if (!evt) return '';
-  // Claude Code assistant 메시지
+  // 최종 result 이벤트는 스트리밍으로 이미 출력된 텍스트를 재전송하므로 무시
+  if (evt.type === 'result') return '';
+  // Claude Code assistant 메시지 (스트리밍)
   if (evt.type === 'assistant' && evt.message && Array.isArray(evt.message.content)) {
     return evt.message.content
       .filter(c => c && c.type === 'text' && typeof c.text === 'string')
       .map(c => c.text)
       .join('');
   }
-  // 최종 result
-  if (evt.type === 'result' && typeof evt.result === 'string') return evt.result;
-  // 래퍼 문서 기본 필드
+  // 래퍼 문서 기본 필드 (델타형 스트림)
   if (typeof evt.message === 'string') return evt.message;
   if (typeof evt.text === 'string') return evt.text;
   if (typeof evt.delta === 'string') return evt.delta;
@@ -331,49 +332,158 @@ function buildPrompt(userQuestion) {
   const ctx = getScreenContext(rawData);
   const latestYm = ctx ? ctx.latestYm : '(없음)';
   const latestYear = ctx ? ctx.latestYear : '';
+  const activeTab = getActiveTabName();
+  const selectedYm = (document.getElementById('current-yearmonth') || {}).value || latestYm;
 
+  // ===== 보험손익 탭 데이터 =====
   const ents = extractEntities(userQuestion);
   const filtered = filterByEntities(rawData, ents, ctx);
   const filterLabel = describeFilters(ents, ctx) || '필터 없음';
 
-  const summaryCsv = monthCatSummary(rawData);
+  const pnlSummary = monthCatSummary(rawData);
   const detailsCsv = (filtered.length > 0 && filtered.length <= 200)
     ? toCsv(filtered)
     : null;
-
   const detailBlock = detailsCsv
-    ? `\n\n## 질문 관련 상세 행 (필터: ${filterLabel}, ${filtered.length}건)\n\`\`\`csv\n${detailsCsv}\n\`\`\``
-    : `\n\n(질문 관련 단일 필터 미매칭 또는 행 수 과다 — 월별×구분 요약만 사용)`;
+    ? `\n\n## [보험손익] 질문 관련 상세 행 (필터: ${filterLabel}, ${filtered.length}건)\n\`\`\`csv\n${detailsCsv}\n\`\`\``
+    : '';
 
-  return `당신은 미래에셋 보험손익 대시보드의 데이터 분석 챗봇입니다.
+  // ===== 보험금융손익 탭 데이터 =====
+  const d2_2 = (typeof window !== 'undefined' && window.rawData2_2) || [];
+  const d2_1 = (typeof window !== 'undefined' && window.rawData2_1) || [];
+  const finCostCsv = d2_2.length ? finCostSummary(d2_2) : '(데이터 없음)';
+  const finRateCsv = d2_1.length ? finRateSummary(d2_1) : '(데이터 없음)';
+
+  // ===== 예실차 탭 데이터 =====
+  const d3 = (typeof window !== 'undefined' && window.rawData3) || [];
+  const varSummaryCsv = d3.length ? varianceSummary(d3) : '(데이터 없음)';
+  const varProductCsv = d3.length ? varProductLatest(d3, selectedYm) : '(데이터 없음)';
+
+  return `당신은 미래에셋 Actuarial Report 대시보드의 데이터 분석 챗봇입니다.
 아래 "데이터"만 근거로 정확한 숫자를 답하세요. 외부 파일 Read 하지 마세요.
+탭은 3개(보험손익 / 보험금융손익 / 예실차)이며, 사용자 질문이 어느 탭에 대한 것인지 판단해서 해당 데이터셋으로 답하세요.
 
 ## 기준 정보
-- 당월 = ${latestYm}
+- 선택된 마감년월 = ${selectedYm}
+- 데이터 최신월(보험손익) = ${latestYm}
 - 당해 연도 = ${latestYear}
-- 회계모형: NP, IDP, VFA, NA
-- 구분: 보험수익, 보험서비스비용, 간접사업비, 그외
-- 구분2: CSM상각, RA변동, 간접사업비, 발생보험금, 손실부담비용, 손실부담비용배분
+- 현재 활성 탭 = ${activeTab}
 
-## 수식 (반드시 준수)
-- 보험손익(차감전) = Σ(구분="보험수익") − Σ(구분="보험서비스비용")
-- 보험손익(차감후) = 보험손익(차감전) − Σ(구분="간접사업비")
+## 데이터셋 스키마
+**[보험손익] sample_data1 (rawData)**
+- 컬럼: 마감년도, 마감년월, 회계모형(NP/IDP/VFA/NA), 구분(보험수익/보험서비스비용/간접사업비/그외), 구분2(CSM상각/RA변동/간접사업비/발생보험금/손실부담비용/손실부담비용배분), 금액
+- 지표: 보험손익(차감전) = Σ보험수익 − Σ보험서비스비용 / 보험손익(차감후) = 차감전 − Σ간접사업비
+
+**[보험금융손익] sample_data2_2 (rawData2_2) - 상세**
+- 컬럼: 회계모형(NP/IDP/VFA), 상품유형, 마감년월, 구분(이자부리/위험경감/공시이율예실차), 보험금융비용, 부담이자율
+- 지표: 섹션1·2(NP/IDP) = 구분='이자부리' 보험금융비용, 섹션3(VFA) = 구분별 보험금융비용, 섹션5(OCI) = 구분='공시이율예실차' 보험금융비용
+
+**[보험금융손익] sample_data2_1 (rawData2_1) - 합계**
+- 컬럼: 회계모형(IDP/NP/합계), 마감년월, 부담이자율
+- 용도: 섹션4 부담이자율 합계/총합 행
+
+**[예실차] sample_data3 (rawData3)**
+- 컬럼: 마감년월, 회계모형, 상품유형, 상품군, 코호트, 구분(보험금(PL)/유지비/신계약비(PL)/신계약비(CSM)/보험료/보험금(CSM)/약관대출/계약자배당), 예실구분(예상/실제), 금액
+- 지표: Variance = Σ(예실구분='예상') − Σ(예실구분='실제') (약속)
+- 섹션1(지급보험금) 코호트 매핑: 999991→~2018, 201992→2019, 202092→2020, 202192→2021, 202201→2022, 202301→2023, 202401→2024, 202501→2025
+- 섹션3(기타 현금흐름) 라벨↔데이터 구분 매핑: 수입보험료→보험료, 투자요소 보험금→보험금(CSM), 약관대출→약관대출, 기타지급금→계약자배당
+
+## 공통 수식
 - 정수 단위: 억 (Math.round)
+- Variance(예-실) 음수는 실제가 예상보다 큼
 
-## 월별 × 구분 합계 (전 기간, 단위: 억 원본)
+## 현재 화면 스냅샷 (활성 탭 "${activeTab}"에 실제로 표시된 표)
+- 사용자가 지금 보고 있는 값이니 답변 시 최우선 참고
+- 원본 CSV와 값이 다르면 필터(선택월/최근12개월/코호트)가 이미 반영된 결과
+${snapshotActiveScreen()}
+
+## [보험손익] 월별 × 구분 합계 (전 기간)
 \`\`\`csv
-${summaryCsv}
+${pnlSummary}
 \`\`\`${detailBlock}
 
-## 답변 지침
-- 한국어로 답변
-- 정수(억) + 원본 소수점 병기 (예: "951억 (원본 950.8693)")
-- 마크다운 허용 (** - |). HTML 금지
-- 끝에 "📐 계산식" 섹션으로 산출 수식 요약
-- 제공된 데이터로 답할 수 없으면 "제공 데이터 범위 밖"이라고 명시
+## [보험금융손익] 월별 × 회계모형 × 구분 — 보험금융비용 합계
+\`\`\`csv
+${finCostCsv}
+\`\`\`
+
+## [보험금융손익] 월별 × 회계모형 — 부담이자율 (sample_data2_1)
+\`\`\`csv
+${finRateCsv}
+\`\`\`
+
+## [예실차] 월별 × 구분 × 예실구분 — 금액 합계
+\`\`\`csv
+${varSummaryCsv}
+\`\`\`
+
+## [예실차] 선택월(${selectedYm}) × 상품유형 × 구분 × 예실구분 — 금액
+\`\`\`csv
+${varProductCsv}
+\`\`\`
+
+## 답변 지침 (간결하게)
+- 한국어, 2~4문장 이내로 짧게
+- 핵심 숫자만 제시 (단위: 억, 정수 반올림)
+- 불필요한 서론/도입부/결론 금지, 표·불릿·수식 섹션 생략 (사용자가 요청할 때만 사용)
+- 여러 값이 필요하면 한 줄 불릿 최대 5개까지만
+- 답할 수 없으면 "제공 데이터 범위 밖" 한 줄로 종료
 
 ## 사용자 질문
 ${userQuestion}`;
+}
+
+/** 활성 탭 라벨 (보험손익/보험금융손익/예실차) */
+function getActiveTabName() {
+  const btn = document.querySelector('.tab-btn.tab-active');
+  if (btn) return btn.textContent.trim();
+  return '보험손익';
+}
+
+/**
+ * 현재 화면(활성 탭)에 렌더된 표들을 텍스트로 수집.
+ * - 패널 제목(h2) + 태그(period-tag) + 표 내용을 마크다운 파이프 테이블처럼 구성
+ * - 한 셀 길이 제한으로 안전하게 자르고, 전체 길이 상한 초과 시 뒷부분 생략
+ */
+function snapshotActiveScreen() {
+  const panel = document.querySelector('.tab-panel.tab-panel-active');
+  if (!panel) return '(활성 탭 없음)';
+
+  const MAX_CELL = 40;
+  const MAX_TOTAL = 12000;
+  const clip = (s) => {
+    const t = String(s).replace(/\s+/g, ' ').trim();
+    return t.length > MAX_CELL ? t.slice(0, MAX_CELL) + '…' : t;
+  };
+
+  const out = [];
+  const panels = panel.querySelectorAll('.panel');
+  panels.forEach(p => {
+    const h2 = p.querySelector('.panel-header h2');
+    const tag = p.querySelector('.panel-header .period-tag');
+    const title = (h2 ? h2.textContent.trim() : '(제목없음)') +
+      (tag && tag.textContent.trim() && tag.textContent.trim() !== '-' ? ` [${tag.textContent.trim()}]` : '');
+    const table = p.querySelector('table');
+    if (!table) return;
+
+    const heads = [...table.querySelectorAll('thead tr')].map(tr =>
+      '| ' + [...tr.children].map(td => clip(td.textContent)).join(' | ') + ' |'
+    );
+    const bodies = [...table.querySelectorAll('tbody tr')].map(tr =>
+      '| ' + [...tr.children].map(td => clip(td.textContent)).join(' | ') + ' |'
+    );
+
+    out.push(`### ${title}`);
+    if (heads.length) out.push(heads.join('\n'));
+    if (bodies.length) out.push(bodies.join('\n'));
+    out.push('');
+  });
+
+  let joined = out.join('\n');
+  if (joined.length > MAX_TOTAL) {
+    joined = joined.slice(0, MAX_TOTAL) + '\n…(화면 스냅샷 뒷부분 생략)';
+  }
+  return joined || '(화면에 표가 없음)';
 }
 
 /* ================================================================
@@ -495,6 +605,84 @@ function toCsv(rows) {
     `${d.마감년도},${d.마감년월},${d.회계모형},${d.구분},${d.구분2},${d.금액}`
   );
   return [header, ...lines].join('\n');
+}
+
+/** [보험금융손익] 월×회계모형×구분 보험금융비용 합계 (rawData2_2) */
+function finCostSummary(rows) {
+  const agg = {}; // { 마감년월: { 'NP|이자부리': sum, ... } }
+  rows.forEach(r => {
+    const k = `${r.회계모형}|${r.구분}`;
+    if (!agg[r.마감년월]) agg[r.마감년월] = {};
+    agg[r.마감년월][k] = (agg[r.마감년월][k] || 0) + (r.보험금융비용 || 0);
+  });
+  const months = Object.keys(agg).sort();
+  const cols = [
+    'NP|이자부리', 'IDP|이자부리',
+    'VFA|이자부리', 'VFA|위험경감',
+    'NP|공시이율예실차', 'IDP|공시이율예실차',
+  ];
+  const header = '마감년월,' + cols.join(',');
+  const lines = months.map(m =>
+    m + ',' + cols.map(c => (agg[m][c] || 0).toFixed(2)).join(',')
+  );
+  return [header, ...lines].join('\n');
+}
+
+/** [보험금융손익] 월×회계모형 부담이자율 (rawData2_1) */
+function finRateSummary(rows) {
+  const agg = {}; // { 마감년월: { IDP, NP, 합계 } }
+  rows.forEach(r => {
+    if (!agg[r.마감년월]) agg[r.마감년월] = {};
+    agg[r.마감년월][r.회계모형] = r.부담이자율 || 0;
+  });
+  const months = Object.keys(agg).sort();
+  const cols = ['IDP', 'NP', '합계'];
+  const header = '마감년월,' + cols.join(',');
+  const lines = months.map(m =>
+    m + ',' + cols.map(c => (agg[m][c] || 0).toFixed(2)).join(',')
+  );
+  return [header, ...lines].join('\n');
+}
+
+/** [예실차] 월×구분×예실구분 금액 합계 (rawData3) */
+function varianceSummary(rows) {
+  const agg = {};
+  rows.forEach(r => {
+    const k = `${r.구분}|${r.예실구분}`;
+    if (!agg[r.마감년월]) agg[r.마감년월] = {};
+    agg[r.마감년월][k] = (agg[r.마감년월][k] || 0) + (r.금액 || 0);
+  });
+  const months = Object.keys(agg).sort();
+  const gubuns = [...new Set(rows.map(r => r.구분))].filter(Boolean);
+  const kinds = ['예상', '실제'];
+  const cols = [];
+  gubuns.forEach(g => kinds.forEach(k => cols.push(`${g}|${k}`)));
+  const header = '마감년월,' + cols.join(',');
+  const lines = months.map(m =>
+    m + ',' + cols.map(c => (agg[m][c] || 0).toFixed(2)).join(',')
+  );
+  return [header, ...lines].join('\n');
+}
+
+/** [예실차] 특정월 상품유형×구분×예실구분 금액 (rawData3) */
+function varProductLatest(rows, ym) {
+  if (!ym) return '(선택월 없음)';
+  const sub = rows.filter(r => r.마감년월 === ym);
+  if (sub.length === 0) return `(${ym} 데이터 없음)`;
+  const agg = {}; // { '상품|구분|예실구분': sum }
+  sub.forEach(r => {
+    const k = `${r.상품유형}|${r.구분}|${r.예실구분}`;
+    agg[k] = (agg[k] || 0) + (r.금액 || 0);
+  });
+  const header = '상품유형,구분,예실구분,금액';
+  const lines = Object.keys(agg).sort().map(k => {
+    const [p, g, ys] = k.split('|');
+    return `${p},${g},${ys},${agg[k].toFixed(2)}`;
+  });
+  // 너무 많으면 상위 200행으로 제한
+  const capped = lines.length > 200 ? lines.slice(0, 200) : lines;
+  const footer = lines.length > 200 ? `\n(총 ${lines.length}행 중 상위 200행만 표시)` : '';
+  return [header, ...capped].join('\n') + footer;
 }
 
 /* ================================================================

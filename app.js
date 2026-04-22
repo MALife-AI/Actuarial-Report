@@ -17,49 +17,77 @@ const INDIRECT_KEY = '간접사업비';
 
 /* ================================================================
  * 1. XLSX 파싱 (SheetJS 사용)
+ *   - 첫 시트 헤더를 키로 사용해 제네릭 객체 배열 반환
+ *   - 마감년도/마감년월 등 정수형 키는 문자열로 변환 (뒤에서 slice 사용)
  * ================================================================ */
 function parseXLSX(buffer) {
   const wb = XLSX.read(buffer, { type: 'array' });
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-  return rows.slice(1)
-    .filter(cols => cols && cols.length > 0 && cols[0] !== '')
-    .map(cols => ({
-      마감년도: String(cols[0]),
-      마감년월: String(cols[1]),
-      회계모형: cols[2],
-      구분:     cols[3],
-      구분2:    cols[4],
-      금액:     parseFloat(cols[5]) || 0,
-    }));
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
+  return rows.map(row => {
+    const out = {};
+    for (const [k, v] of Object.entries(row)) {
+      if (k === '마감년도' || k === '마감년월' || k === '코호트') {
+        out[k] = String(v);
+      } else if (typeof v === 'number') {
+        out[k] = v;
+      } else {
+        out[k] = v;
+      }
+    }
+    // 금액/숫자 필드는 문자열로 들어오면 parseFloat
+    ['금액', '보험금융비용', '이자부리대상금액', '부담이자율'].forEach(k => {
+      if (out[k] !== undefined && typeof out[k] !== 'number') {
+        out[k] = parseFloat(out[k]) || 0;
+      }
+    });
+    return out;
+  });
 }
 
 /* ================================================================
  * 2. 필터
  * ================================================================ */
 function initFilters() {
-  // 당월(최신 마감년월)을 헤더에 표시
-  const latestYm = rawData.reduce((mx, d) => d.마감년월 > mx ? d.마감년월 : mx, '000000');
-  const ymEl = document.getElementById('current-yearmonth');
-  if (ymEl) ymEl.textContent = latestYm;
+  const allYms = [...new Set(rawData.map(d => d.마감년월))].sort((a, b) => b.localeCompare(a));
+  const latestYm = allYms[0];
+  const sel = document.getElementById('current-yearmonth');
+  if (!sel) return;
+  sel.innerHTML = allYms
+    .map(ym => `<option value="${ym}">${ym.slice(0, 4)}.${ym.slice(4)}</option>`)
+    .join('');
+  sel.value = latestYm;
+  sel.addEventListener('change', () => renderAll());
+}
+
+function getSelectedYm() {
+  const sel = document.getElementById('current-yearmonth');
+  if (sel && sel.value) return sel.value;
+  return filteredData.reduce((mx, d) => d.마감년월 > mx ? d.마감년월 : mx, '000000');
 }
 
 function renderAll() {
-  const latestYm = filteredData.reduce((mx, d) => d.마감년월 > mx ? d.마감년월 : mx, '000000');
-  const latestYear = latestYm.slice(0, 4);
-  const latestMonth = parseInt(latestYm.slice(4), 10);
+  const selectedYm = getSelectedYm();
+  const selectedYear = selectedYm.slice(0, 4);
+  const selectedMonth = parseInt(selectedYm.slice(4), 10);
 
-  document.getElementById('current-month-tag').textContent = `${latestYear}.${String(latestMonth).padStart(2, '0')}`;
-  document.getElementById('ytd-tag').textContent = `${latestYear}.01 ~ ${latestYear}.${String(latestMonth).padStart(2, '0')}`;
+  const curTag = document.getElementById('current-month-tag');
+  if (curTag) curTag.textContent = `${selectedYear}.${String(selectedMonth).padStart(2, '0')}`;
+  const ytdTag = document.getElementById('ytd-tag');
+  if (ytdTag) ytdTag.textContent = `${selectedYear}.01 ~ ${selectedYear}.${String(selectedMonth).padStart(2, '0')}`;
 
-  // 당월 데이터
-  const currentMonthData = filteredData.filter(d => d.마감년월 === latestYm);
-  // 당해 누적 데이터 (해당 연도 전체)
-  const ytdData = filteredData.filter(d => d.마감년도 === latestYear);
+  // 당월 데이터 (선택 월만)
+  const currentMonthData = filteredData.filter(d => d.마감년월 === selectedYm);
+  // 당해 누적 데이터 (선택 연도 1월 ~ 선택 월)
+  const ytdData = filteredData.filter(d => d.마감년도 === selectedYear && d.마감년월 <= selectedYm);
 
   renderPnLTable(currentMonthData, 'current-month-tbody');
   renderPnLTable(ytdData, 'ytd-tbody');
-  renderTrend(ytdData, latestYear);
+  renderTrend(filteredData, selectedYm);
+
+  // 보험금융손익 · 예실차 탭도 선택월 기준으로 다시 렌더
+  if (typeof renderFinancial === 'function') renderFinancial();
+  if (typeof renderVariance === 'function') renderVariance();
 }
 
 /* ================================================================
@@ -149,29 +177,32 @@ function numCell(v) {
 /* ================================================================
  * 4. 최근 12개월 월별 추이 (라인 차트 + 데이터 테이블)
  * ================================================================ */
-function renderTrend(data, year) {
-  // 월별 집계: { 1: {수익, 비용, 간접, 손익}, 2: {...}, ... }
-  const monthly = {};
-  for (let m = 1; m <= 12; m++) {
-    monthly[m] = { 보험수익: 0, 보험서비스비용: 0, 간접사업비: 0 };
+function renderTrend(data, selectedYm) {
+  // 선택월 기준 최근 12개월 키 생성 (예: 선택이 202511 → 202412 ~ 202511)
+  const months = [];
+  let y = parseInt(selectedYm.slice(0, 4), 10);
+  let m = parseInt(selectedYm.slice(4), 10);
+  for (let i = 0; i < 12; i++) {
+    months.unshift(`${y}${String(m).padStart(2, '0')}`);
+    m--;
+    if (m === 0) { m = 12; y--; }
   }
+
+  const monthly = {};
+  months.forEach(ym => { monthly[ym] = { 보험수익: 0, 보험서비스비용: 0, 간접사업비: 0 }; });
   data.forEach(d => {
-    const m = parseInt(d.마감년월.slice(4), 10);
-    if (d.구분 in monthly[m]) monthly[m][d.구분] += d.금액;
+    const bucket = monthly[d.마감년월];
+    if (bucket && d.구분 in bucket) bucket[d.구분] += d.금액;
   });
 
-  const monthKeys = Array.from({ length: 12 }, (_, i) => i + 1);
-  const labels    = monthKeys.map(m => `${m}월`);
-  const revArr    = monthKeys.map(m => monthly[m].보험수익);
-  const costArr   = monthKeys.map(m => monthly[m].보험서비스비용);
-  const indArr    = monthKeys.map(m => monthly[m].간접사업비);
-  const pnlArr    = monthKeys.map(m => monthly[m].보험수익 - monthly[m].보험서비스비용 - monthly[m].간접사업비);
+  const labels  = months.map(ym => `${ym.slice(2, 4)}.${ym.slice(4)}`);
+  const revArr  = months.map(ym => monthly[ym].보험수익);
+  const costArr = months.map(ym => monthly[ym].보험서비스비용);
+  const indArr  = months.map(ym => monthly[ym].간접사업비);
+  const pnlArr  = months.map(ym => monthly[ym].보험수익 - monthly[ym].보험서비스비용 - monthly[ym].간접사업비);
 
-  // 라인 차트
   renderTrendChart(labels, pnlArr);
-
-  // 하단 데이터 테이블
-  renderTrendTable(year, monthKeys, revArr, costArr, indArr, pnlArr);
+  renderTrendTable(labels, revArr, costArr, indArr, pnlArr);
 }
 
 function renderTrendChart(labels, pnlArr) {
@@ -258,11 +289,11 @@ function renderTrendChart(labels, pnlArr) {
   });
 }
 
-function renderTrendTable(year, months, revArr, costArr, indArr, pnlArr) {
+function renderTrendTable(labels, revArr, costArr, indArr, pnlArr) {
   // 헤더 업데이트
   const theadRow = document.getElementById('trend-thead-row');
   theadRow.innerHTML = '<th>구분</th>' +
-    months.map(m => `<th class="num">${year.slice(2)}.${String(m).padStart(2,'0')}</th>`).join('');
+    labels.map(l => `<th class="num">${l}</th>`).join('');
 
   // 본문
   const tbody = document.getElementById('trend-tbody');
@@ -293,29 +324,62 @@ function formatInt(n) {
 }
 
 /* ================================================================
- * 6. 초기화
+ * 6. 탭 전환
  * ================================================================ */
-document.addEventListener('DOMContentLoaded', () => {
-  fetch('data/sample_data1.xlsx')
-    .then(res => {
-      if (!res.ok) throw new Error('XLSX 파일을 불러올 수 없습니다.');
-      return res.arrayBuffer();
-    })
-    .then(buf => {
-      rawData = parseXLSX(buf);
-      filteredData = [...rawData];
-      initFilters();
-      renderAll();
-    })
-    .catch(err => {
-      document.body.innerHTML = `
-        <div style="padding:40px;text-align:center;color:#e74c3c;">
-          <h2>데이터 로드 실패</h2>
-          <p>${err.message}</p>
-          <p style="color:#a0a0b0;font-size:13px;margin-top:12px;">
-            로컬 파일 시스템에서 직접 열면 CORS 제한이 발생합니다.<br>
-            로컬 서버를 실행해주세요: <code>npx serve .</code>
-          </p>
-        </div>`;
+function initTabs() {
+  const buttons = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.tab-panel');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab;
+      buttons.forEach(b => b.classList.toggle('tab-active', b === btn));
+      panels.forEach(p => p.classList.toggle('tab-panel-active', p.id === `tab-${target}`));
     });
+  });
+}
+
+/* ================================================================
+ * 7. 초기화 — 4개 xlsx 병렬 로드 후 각 탭 렌더
+ * ================================================================ */
+async function loadXlsx(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`${path} 로드 실패`);
+  return parseXLSX(await res.arrayBuffer());
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const [d1, d2a, d2b, d3] = await Promise.all([
+      loadXlsx('data/sample_data1.xlsx'),
+      loadXlsx('data/sample_data2_1.xlsx'),
+      loadXlsx('data/sample_data2_2.xlsx'),
+      loadXlsx('data/sample_data3..xlsx'),
+    ]);
+
+    // Tab 1 (보험손익) 데이터
+    rawData = d1;
+    filteredData = [...rawData];
+
+    // Tab 2/3 전역 노출
+    window.rawData2_1 = d2a;
+    window.rawData2_2 = d2b;
+    window.rawData3 = d3;
+
+    initTabs();
+    initFilters();
+    renderAll();
+
+    // Tab 2/3 렌더 (각 JS 파일에서 제공)
+    if (typeof renderFinancial === 'function') renderFinancial();
+    if (typeof renderVariance === 'function') renderVariance();
+  } catch (err) {
+    document.body.innerHTML = `
+      <div style="padding:40px;text-align:center;color:#e74c3c;">
+        <h2>데이터 로드 실패</h2>
+        <p>${err.message}</p>
+        <p style="color:#a0a0b0;font-size:13px;margin-top:12px;">
+          로컬 서버에서 실행하세요: <code>npx serve .</code>
+        </p>
+      </div>`;
+  }
 });
