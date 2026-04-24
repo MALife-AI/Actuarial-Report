@@ -691,11 +691,13 @@ tbody tr.total-row td.num.neg { color: var(--negative); }
  * 챗봇 (미래에셋 브랜드 적용)
  * ============================================================ */
 #chat-fab {
-  position: fixed;
-  bottom: 28px;
-  right: 28px;
-  bottom: max(28px, env(safe-area-inset-bottom, 28px));
-  right: max(28px, env(safe-area-inset-right, 28px));
+  position: fixed !important;
+  bottom: 28px !important;
+  right: 28px !important;
+  bottom: max(28px, env(safe-area-inset-bottom, 28px)) !important;
+  right: max(28px, env(safe-area-inset-right, 28px)) !important;
+  top: auto !important;
+  left: auto !important;
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -705,7 +707,7 @@ tbody tr.total-row td.num.neg { color: var(--negative); }
   font-size: 24px;
   cursor: pointer;
   box-shadow: 0 6px 20px rgba(245, 130, 32, 0.4);
-  z-index: 9999;
+  z-index: 2147483647;
   transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   align-items: center;
@@ -904,13 +906,11 @@ tbody tr.total-row td.num.neg { color: var(--negative); }
     width: auto;
   }
   #chat-fab {
-    position: fixed;
-    bottom: 16px;
-    right: 16px;
-    bottom: max(16px, env(safe-area-inset-bottom, 16px));
-    right: max(16px, env(safe-area-inset-right, 16px));
+    bottom: 16px !important;
+    right: 16px !important;
+    bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
+    right: max(16px, env(safe-area-inset-right, 16px)) !important;
     width: 52px;
     height: 52px;
-    z-index: 9999;
   }
 }
