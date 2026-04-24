@@ -42,8 +42,11 @@ function buildChatUI() {
     'top:auto',
     'left:auto',
     'z-index:2147483647',
+    'transform:translate3d(0,0,0)',
+    'will-change:transform',
   ].join(';');
   document.body.appendChild(fab);
+  pinFabToViewport(fab);
 
   const panel = document.createElement('div');
   panel.id = 'chat-panel';
@@ -60,6 +63,35 @@ function buildChatUI() {
     </div>
   `;
   document.body.appendChild(panel);
+}
+
+/** position:fixed 를 지원하지 않거나 동적으로 풀리는 모바일 브라우저용 폴백.
+ *  스크롤/리사이즈/뷰포트 변경 시마다 rAF로 FAB 좌표를 뷰포트 기준으로 재적용. */
+function pinFabToViewport(fab) {
+  let pending = false;
+  const apply = () => {
+    pending = false;
+    fab.style.setProperty('position', 'fixed', 'important');
+    fab.style.setProperty('top', 'auto', 'important');
+    fab.style.setProperty('left', 'auto', 'important');
+    const inset = window.matchMedia('(max-width: 500px)').matches ? 16 : 28;
+    fab.style.setProperty('right', inset + 'px', 'important');
+    fab.style.setProperty('bottom', inset + 'px', 'important');
+    fab.style.setProperty('z-index', '2147483647', 'important');
+  };
+  const schedule = () => {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(apply);
+  };
+  apply();
+  window.addEventListener('scroll', schedule, { passive: true });
+  window.addEventListener('resize', schedule);
+  window.addEventListener('orientationchange', schedule);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('scroll', schedule);
+    window.visualViewport.addEventListener('resize', schedule);
+  }
 }
 
 function bindChatEvents() {
