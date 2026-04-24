@@ -56,11 +56,7 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   width: 100%;
   max-width: 100vw;
-}
-
-.table-wrapper,
-.trend-table-wrapper {
-  touch-action: pan-x pan-y;
+  overflow-x: clip;
 }
 
 /* ============================================================
