@@ -404,6 +404,8 @@ html, body {
 .table-wrapper {
   overflow-x: auto;
   overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
 
 table {
@@ -554,6 +556,9 @@ tbody tr.total-row td.num.neg { color: var(--negative); }
 /* 월별 추이 하단 데이터 테이블 */
 .trend-table-wrapper {
   overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
   border-top: 1px solid var(--border-soft);
   padding-top: 14px;
 }
