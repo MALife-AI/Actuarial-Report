@@ -691,6 +691,15 @@ tbody tr.total-row td.num.neg { color: var(--negative); }
   .fin-table th, .fin-table td,
   .var-table th, .var-table td { padding: 3px 4px; }
 
+  /* 모바일: 모든 테이블을 content 폭으로 확장해 wrapper 내부 좌우 스크롤 발동 */
+  .table-wrapper .pnl-table,
+  .table-wrapper .fin-table,
+  .table-wrapper .var-table,
+  .trend-table-wrapper .trend-table {
+    width: max-content;
+    min-width: 100%;
+  }
+
   .footer-top { flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px 16px 14px; }
   .footer-bottom { padding: 10px 16px; }
 }
