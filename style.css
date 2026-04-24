@@ -406,6 +406,22 @@ html, body {
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(4, 59, 114, 0.35) transparent;
+}
+.table-wrapper::-webkit-scrollbar,
+.trend-table-wrapper::-webkit-scrollbar {
+  height: 6px;
+  -webkit-appearance: none;
+}
+.table-wrapper::-webkit-scrollbar-thumb,
+.trend-table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(4, 59, 114, 0.35);
+  border-radius: 3px;
+}
+.table-wrapper::-webkit-scrollbar-track,
+.trend-table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 table {
@@ -691,7 +707,17 @@ tbody tr.total-row td.num.neg { color: var(--negative); }
   .fin-table th, .fin-table td,
   .var-table th, .var-table td { padding: 3px 4px; }
 
-  /* 모바일: 모든 테이블을 content 폭으로 확장해 wrapper 내부 좌우 스크롤 발동 */
+  /* ========================================================
+   * 모바일 테이블 스크롤 전략
+   *  - wrapper 내부에서만 좌우 스크롤 (body는 밀리지 않음)
+   *  - 테이블은 content 폭으로 확장 + 최소 폭 보장 → 자동 overflow
+   *  - 첫 컬럼(구분/상품) sticky → 스크롤 중에도 항목명 고정
+   * ======================================================== */
+  .table-wrapper,
+  .trend-table-wrapper {
+    touch-action: pan-x pan-y;
+    overscroll-behavior-x: contain;
+  }
   .table-wrapper .pnl-table,
   .table-wrapper .fin-table,
   .table-wrapper .var-table,
@@ -699,6 +725,48 @@ tbody tr.total-row td.num.neg { color: var(--negative); }
     width: max-content;
     min-width: 100%;
   }
+
+  /* 컬럼 최소 폭 — 너무 좁아져서 뭉개지지 않도록 */
+  .pnl-table th.num, .pnl-table td.num { min-width: 68px; }
+  .fin-table th, .fin-table td,
+  .var-table th, .var-table td { min-width: 56px; }
+  .fin-table th:first-child, .fin-table td:first-child,
+  .var-table th:first-child, .var-table td:first-child { min-width: 88px; }
+  .trend-table th.num, .trend-table td.num { min-width: 58px; }
+
+  /* 첫 컬럼 sticky — 가로 스크롤 시 라벨 유지 */
+  .pnl-table th:first-child,
+  .pnl-table td:first-child,
+  .fin-table th:first-child,
+  .fin-table td:first-child,
+  .var-table th:first-child,
+  .var-table td:first-child,
+  .trend-table th:first-child,
+  .trend-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #FFFFFF;
+    box-shadow: 1px 0 0 rgba(4, 59, 114, 0.08);
+  }
+  /* 헤더 sticky는 본문보다 위로 */
+  .pnl-table thead th:first-child,
+  .fin-table thead th:first-child,
+  .var-table thead th:first-child,
+  .trend-table thead th:first-child { z-index: 3; }
+
+  /* 테이블별 헤더 배경 유지 */
+  .pnl-table thead th:first-child { background: var(--ma-blue); }
+  .fin-table thead th:first-child,
+  .var-table thead th:first-child { background: #F4F6F8; }
+  .trend-table thead th:first-child { background: var(--ma-footer-bg); }
+
+  /* 특수 행(소계/섹션 헤더)도 sticky 첫 셀 배경 맞춤 */
+  .fin-table tr.subtotal td:first-child,
+  .var-table tr.subtotal td:first-child,
+  .pnl-table tr.subtotal td:first-child { background: #F7F9FB; }
+  .fin-table tr.section-header td:first-child { background: #FDEADA; }
+  .pnl-table tr.total-row td:first-child { background: #FFFFFF; }
 
   .footer-top { flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px 16px 14px; }
   .footer-bottom { padding: 10px 16px; }
