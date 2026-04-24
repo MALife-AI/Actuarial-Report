@@ -226,10 +226,6 @@ html, body {
   border-bottom: 1px solid var(--border-soft);
   text-align: right;
   white-space: nowrap;
-  min-width: 58px;
-}
-.fin-table th:first-child, .fin-table td:first-child {
-  min-width: 88px;
 }
 .fin-table th:first-child, .fin-table td:first-child,
 .fin-table td.sub-label {
@@ -278,10 +274,6 @@ html, body {
   border-bottom: 1px solid var(--border-soft);
   text-align: right;
   white-space: nowrap;
-  min-width: 58px;
-}
-.var-table th:first-child, .var-table td:first-child {
-  min-width: 88px;
 }
 .var-table thead th[colspan] {
   text-align: center;
