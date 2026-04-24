@@ -35,6 +35,14 @@ function buildChatUI() {
   fab.id = 'chat-fab';
   fab.innerHTML = '&#128172;';
   fab.title = '데이터 분석 챗봇 (Claude)';
+  fab.style.cssText = [
+    'position:fixed',
+    'right:16px',
+    'bottom:16px',
+    'top:auto',
+    'left:auto',
+    'z-index:2147483647',
+  ].join(';');
   document.body.appendChild(fab);
 
   const panel = document.createElement('div');
