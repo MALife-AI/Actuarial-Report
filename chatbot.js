@@ -42,7 +42,7 @@ function buildChatUI() {
   panel.classList.add('chat-hidden');
   panel.innerHTML = `
     <div class="chat-header">
-      <span class="chat-header-title">Data Analyst · Claude</span>
+      <span class="chat-header-title">Data Analyst</span>
       <button id="chat-close">&times;</button>
     </div>
     <div id="chat-messages" class="chat-messages"></div>
@@ -74,14 +74,12 @@ function toggleChat() {
     if (chatHistory.length === 0) {
       appendBot(
         '안녕하세요! 이 챗봇은 <b>Claude</b>에 연결되어 있습니다.\n' +
-        '3개 탭(보험손익 / 보험금융손익 / 예실차) 데이터를 자연어로 분석해 드립니다.\n\n' +
+        '3개 탭(보험손익 / 보험금융손익 / 예실차) 데이터를 자연어로\n분석해 드립니다.\n\n' +
         '예시 질문:\n' +
-        '- "당월 VFA 보험수익 얼마?" (보험손익)\n' +
-        '- "IDP 부담이자율 추이" (보험금융손익)\n' +
-        '- "VFA 이자부리 보험금융비용 월별" (보험금융손익)\n' +
-        '- "사망 상품군 당월 예실차" (예실차)\n' +
-        '- "유지비 예실차 최근 6개월" (예실차)\n\n' +
-        `<span style="color:#888;font-size:12px">🔗 래퍼 엔드포인트: ${CLAUDE_STREAM_ENDPOINT}</span>`
+        '- "당월 보험수익 금액 알려줘"\n' +
+        '- "보험서비스비용의 전월차 얼마니?"\n' +
+        '- "(무)확정사망 상품의 NP 모델 당월 데이터 알려줘"\n' +
+        '- "사업비 예실차 변액연금의 당월 예상금액이 얼마니?"'
       );
     }
     document.getElementById('chat-input').focus();
