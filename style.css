@@ -406,6 +406,7 @@ html, body {
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
+  min-width: 0;
 }
 
 table {
@@ -559,6 +560,7 @@ tbody tr.total-row td.num.neg { color: var(--negative); }
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
+  min-width: 0;
   border-top: 1px solid var(--border-soft);
   padding-top: 14px;
 }
@@ -654,10 +656,16 @@ tbody tr.total-row td.num.neg { color: var(--negative); }
  * 반응형
  * ============================================================ */
 @media (max-width: 1024px) {
-  .main-content { grid-template-columns: 1fr; }
-  .financial-grid { grid-template-columns: 1fr; }
-  .variance-grid { grid-template-columns: 1fr; }
+  /* minmax(0, 1fr)로 트랙 최소치를 0으로 고정 — 자식 테이블이 max-content여도 패널이 viewport를 넘지 않도록 */
+  .main-content { grid-template-columns: minmax(0, 1fr); }
+  .financial-grid { grid-template-columns: minmax(0, 1fr); }
+  .variance-grid { grid-template-columns: minmax(0, 1fr); }
   .financial-left, .financial-right { gap: 16px; }
+
+  /* 패널 자식(table-wrapper)이 flex/grid 상에서 min-content로 부풀지 않도록 */
+  .panel { min-width: 0; }
+  .financial-left > .panel,
+  .financial-right > .panel { min-width: 0; }
 }
 
 @media (max-width: 640px) {
@@ -698,6 +706,19 @@ tbody tr.total-row td.num.neg { color: var(--negative); }
   .trend-table-wrapper .trend-table {
     width: max-content;
     min-width: 100%;
+  }
+
+  /* 잘리는 가장자리를 시각적으로 마스킹 (scroll-shadow 기법) — 스크롤 가능 여부를 힌트로 표시 */
+  .table-wrapper,
+  .trend-table-wrapper {
+    background:
+      linear-gradient(to right, #FFFFFF 30%, rgba(255, 255, 255, 0)) left center,
+      linear-gradient(to left, #FFFFFF 30%, rgba(255, 255, 255, 0)) right center,
+      radial-gradient(farthest-side at 0 50%, rgba(4, 59, 114, 0.22), rgba(4, 59, 114, 0)) left center,
+      radial-gradient(farthest-side at 100% 50%, rgba(4, 59, 114, 0.22), rgba(4, 59, 114, 0)) right center;
+    background-repeat: no-repeat;
+    background-size: 28px 100%, 28px 100%, 14px 100%, 14px 100%;
+    background-attachment: local, local, scroll, scroll;
   }
 
   .footer-top { flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px 16px 14px; }
