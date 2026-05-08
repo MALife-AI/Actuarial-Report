@@ -14,11 +14,13 @@
 const CLAUDE_WRAPPER_URL =
   (typeof window !== 'undefined' && window.CLAUDE_WRAPPER_URL) || '';
 const CLAUDE_STREAM_ENDPOINT = `${CLAUDE_WRAPPER_URL}/api/claude/stream`;
+const QWEN_STREAM_ENDPOINT  = `${CLAUDE_WRAPPER_URL}/api/qwen/stream`;
 
 /* ---------- 챗봇 상태 ---------- */
 let chatOpen = false;
 let chatHistory = [];
 let currentAbortController = null;
+let selectedModel = 'claude'; // 'claude' | 'qwen'
 
 /* ---------- 초기화 ---------- */
 document.addEventListener('DOMContentLoaded', () => {
@@ -54,6 +56,10 @@ function buildChatUI() {
   panel.innerHTML = `
     <div class="chat-header">
       <span class="chat-header-title">Data Analyst</span>
+      <div class="model-toggle">
+        <button class="model-btn model-btn-active" data-model="claude">Claude</button>
+        <button class="model-btn" data-model="qwen">Qwen</button>
+      </div>
       <button id="chat-close">&times;</button>
     </div>
     <div id="chat-messages" class="chat-messages"></div>
@@ -101,6 +107,19 @@ function bindChatEvents() {
   document.getElementById('chat-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') sendMessage();
   });
+
+  // 모델 토글 버튼
+  document.querySelectorAll('.model-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('model-btn-active'));
+      btn.classList.add('model-btn-active');
+      selectedModel = btn.dataset.model;
+      document.getElementById('chat-input').placeholder =
+        selectedModel === 'claude'
+          ? '데이터에 대해 질문하세요...'
+          : '데이터에 대해 질문하세요... (Qwen)';
+    });
+  });
 }
 
 function toggleChat() {
@@ -113,7 +132,7 @@ function toggleChat() {
     fab.classList.add('chat-fab-active');
     if (chatHistory.length === 0) {
       appendBot(
-        '안녕하세요! 이 챗봇은 <b>Claude</b>에 연결되어 있습니다.\n' +
+        '안녕하세요! 상단의 <b>Claude / Qwen</b> 버튼으로 AI 모델을\n선택할 수 있습니다.\n' +
         '3개 탭(보험손익 / 보험금융손익 / 예실차) 데이터를 자연어로\n분석해 드립니다.\n\n' +
         '예시 질문:\n' +
         '- "당월 보험수익 금액 알려줘"\n' +
@@ -206,9 +225,11 @@ async function sendMessage() {
 
   const bubble = createStreamingBubble();
   const prompt = buildPrompt(text);
+  const streamFn = selectedModel === 'qwen' ? streamFromQwen : streamFromWrapper;
+  const endpoint = selectedModel === 'qwen' ? QWEN_STREAM_ENDPOINT : CLAUDE_STREAM_ENDPOINT;
 
   try {
-    await streamFromWrapper(
+    await streamFn(
       prompt,
       (chunk) => {
         bubble.dataset.text = (bubble.dataset.text || '') + chunk;
@@ -223,15 +244,18 @@ async function sendMessage() {
     scrollMessages();
   } catch (err) {
     if (err.name === 'AbortError') return;
+    const modelLabel = selectedModel === 'qwen' ? 'Qwen sLLM' : 'Claude 래퍼';
     bubble.innerHTML =
-      `<span style="color:#e74c3c">⚠ Claude 래퍼 연결 실패</span><br>` +
+      `<span style="color:#e74c3c">⚠ ${modelLabel} 연결 실패</span><br>` +
       `<span style="color:#888;font-size:12px">` +
-      `URL: <code>${CLAUDE_STREAM_ENDPOINT}</code><br>` +
+      `URL: <code>${endpoint}</code><br>` +
       `오류: ${escapeHtml(err.message)}<br><br>` +
       `조치:<br>` +
       `1) <code>claude-wrapper</code> 서버 실행<br>` +
       `&nbsp;&nbsp;&nbsp;<code>cd claude-wrapper && npm run dev</code><br>` +
-      `2) ${CLAUDE_WRAPPER_URL} 에서 동작 중인지 확인<br>` +
+      (selectedModel === 'qwen'
+        ? `2) vLLM Qwen 서버가 localhost:8000에서 실행 중인지 확인<br>`
+        : `2) ${CLAUDE_WRAPPER_URL} 에서 동작 중인지 확인<br>`) +
       `3) 래퍼 쪽 CORS 허용 헤더 설정<br>` +
       `4) <code>window.CLAUDE_WRAPPER_URL</code> 로 다른 주소 지정 가능` +
       `</span>`;
@@ -340,6 +364,70 @@ async function streamFromWrapper(prompt, onChunk, signal) {
   }
 
   // 스트림 종료 후 남은 버퍼 flush
+  if (buffer) handleLine(buffer);
+}
+
+/**
+ * Qwen (vLLM) 스트리밍 수신 — /api/qwen/stream
+ * 응답 형식은 claude-wrapper가 OpenAI SSE를 변환한 newline-delimited JSON
+ */
+async function streamFromQwen(prompt, onChunk, signal) {
+  const res = await fetch(QWEN_STREAM_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt,
+      temperature: 0.7,
+      maxTokens: 2048,
+    }),
+    signal,
+  });
+
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} ${res.statusText}`);
+  }
+  if (!res.body) {
+    throw new Error('응답 본문이 없습니다 (ReadableStream 미지원).');
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let lastEmitted = '';
+
+  const handleLine = (raw) => {
+    const payload = raw.trim();
+    if (!payload || payload === '[DONE]') return;
+
+    const text = payload.startsWith('data:') ? payload.slice(5).trim() : payload;
+    if (!text) return;
+
+    let evt;
+    try { evt = JSON.parse(text); }
+    catch (_) { return; }
+
+    const chunk = extractText(evt);
+    if (!chunk) return;
+
+    if (chunk.startsWith(lastEmitted) && chunk !== lastEmitted) {
+      onChunk(chunk.slice(lastEmitted.length));
+      lastEmitted = chunk;
+    } else {
+      onChunk(chunk);
+      lastEmitted += chunk;
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) handleLine(line);
+  }
+
   if (buffer) handleLine(buffer);
 }
 

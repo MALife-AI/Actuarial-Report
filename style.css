@@ -839,6 +839,42 @@ tbody tr.total-row td.num.neg { color: var(--negative); }
   word-break: break-word;
 }
 
+/* 모델 토글 (Claude / Qwen) */
+.model-toggle {
+  display: flex;
+  gap: 2px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 2px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+.model-btn {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-primary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.model-btn:hover {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+.model-btn-active {
+  background: #fff;
+  color: var(--ma-orange);
+}
+.model-btn-active:hover {
+  background: #fff;
+  color: var(--ma-orange);
+}
+
 .chat-header-title {
   font-size: 14px;
   font-weight: 700;

@@ -1,0 +1,3 @@
+[submodule "claude-wrapper"]
+	path = claude-wrapper
+	url = https://github.com/MALife-AI/claude-wrapper.git
