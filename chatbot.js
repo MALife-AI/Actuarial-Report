@@ -162,7 +162,7 @@ function enableChatDrag() {
   let startX = 0, startY = 0, startLeft = 0, startTop = 0;
 
   header.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('#chat-close')) return;
+    if (e.target.closest('#chat-close, .model-btn')) return;
     if (e.button !== 0) return;
 
     dragging = true;
