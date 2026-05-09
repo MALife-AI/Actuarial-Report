@@ -472,6 +472,9 @@ function buildPrompt(userQuestion) {
   const filtered = filterByEntities(rawData, ents, ctx);
   const filterLabel = describeFilters(ents, ctx) || '필터 없음';
 
+  // 사전계산된 검증 숫자 (LLM 산수 보강)
+  const factsBlock = formatFacts(computeFacts(userQuestion, ents, ctx, targetTab));
+
   // ===== 보험금융손익 탭 데이터 =====
   const d2_2 = (typeof window !== 'undefined' && window.rawData2_2) || [];
   const d2_1 = (typeof window !== 'undefined' && window.rawData2_1) || [];
@@ -555,7 +558,8 @@ function buildPrompt(userQuestion) {
 - 원본 CSV와 값이 다르면 필터(선택월/최근12개월/코호트)가 이미 반영된 결과
 ${snapshotActiveScreen()}
 
-## 데이터 (질문 타겟 탭: **${targetTab}** — 해당 탭만 풀 포함, 최근 12개월)
+${factsBlock}
+## 데이터 (질문 타겟 탭: **${targetTab}** — 해당 탭만 풀 포함, 최근 12개월; CSV는 위 검증된 숫자에 없는 패턴일 때 폴백 참고용)
 ### [보험손익] 월별 × 구분 합계
 \`\`\`csv
 ${pnlSummary}
@@ -584,6 +588,7 @@ ${varProductCsv}
 ## 답변 지침 (간결하게)
 - 한국어, 2~4문장 이내로 짧게
 - 핵심 숫자만 제시 (단위: 억, 정수 반올림)
+- **숫자는 위 [검증된 숫자]에 있으면 그 값을 그대로 사용**. 거기 없는 경우에만 CSV에서 직접 합/차 산출
 - 불필요한 서론/도입부/결론 금지, 표·불릿·수식 섹션 생략 (사용자가 요청할 때만 사용)
 - 여러 값이 필요하면 한 줄 불릿 최대 5개까지만
 - 답할 수 없으면 "제공 데이터 범위 밖" 한 줄로 종료
@@ -611,6 +616,260 @@ function detectTargetTab(q, activeTab) {
 function lastNMonths(rows, n) {
   const yms = [...new Set(rows.map(r => r.마감년월).filter(Boolean))].sort();
   return new Set(yms.slice(-n));
+}
+
+/* ================================================================
+ * 4-B. 사전계산 (검증된 숫자 블록)
+ *   - JS가 산수 책임짐 → LLM은 자연어 포장만
+ *   - 인풋의 ym(20YYMM)이 있으면 그 월을 앵커, 없으면 데이터 최신월
+ *   - 매칭되는 패턴이 없는 질문도 LLM이 CSV 보고 답할 수 있게 폴백
+ * ================================================================ */
+
+/** 질문 내 모든 마감년월 추출 (예: "2024.06" "2025-01") */
+function extractYms(q) {
+  const out = [];
+  const re = /\b(20\d{2})[.\-/]?(\d{2})\b/g;
+  let m;
+  while ((m = re.exec(q)) !== null) {
+    const mm = parseInt(m[2], 10);
+    if (mm >= 1 && mm <= 12) out.push(m[1] + m[2]);
+  }
+  return out;
+}
+
+/** 앵커 마감년월 결정: 명시된 ym > 데이터 최신 */
+function resolveAnchor(yms, fallbackYm) {
+  if (yms && yms.length) return yms[yms.length - 1];
+  return fallbackYm || null;
+}
+
+/** ym에서 N개월 이전 (ym = "YYYYMM") */
+function shiftYm(ym, monthsBack) {
+  let y = parseInt(ym.slice(0, 4), 10);
+  let mo = parseInt(ym.slice(4), 10);
+  mo -= monthsBack;
+  while (mo <= 0) { mo += 12; y -= 1; }
+  return `${y}${String(mo).padStart(2, '0')}`;
+}
+
+/** 데이터 최근 12개월 (앵커 포함, 앵커 이하만) */
+function trailingYms(allYms, anchorYm, n) {
+  const sorted = [...new Set(allYms)].filter(y => y && y <= anchorYm).sort();
+  return sorted.slice(-n);
+}
+
+/** 숫자 → "1,234" 형식 (정수 반올림) */
+function fmtNum(v) {
+  if (typeof v !== 'number' || !isFinite(v)) return String(v);
+  return Math.round(v).toLocaleString();
+}
+
+/** 보험손익 facts (rawData) */
+function computePnlFacts(data, ents, anchorYm, addYms) {
+  const facts = [];
+  if (!data || !data.length || !anchorYm) return facts;
+  const matchE = (r) =>
+    (!ents.model || r.회계모형 === ents.model) &&
+    (!ents.cat   || r.구분 === ents.cat) &&
+    (!ents.cat2  || r.구분2 === ents.cat2);
+  const sumAt = (m) => data
+    .filter(r => r.마감년월 === m && matchE(r))
+    .reduce((s, r) => s + (r.금액 || 0), 0);
+
+  const dim = [ents.model, ents.cat, ents.cat2].filter(Boolean).join('·') || '전체';
+
+  // 앵커 월 합계
+  const cur = sumAt(anchorYm);
+  facts.push({ label: `[보험손익] ${dim} ${anchorYm}`, value: cur, unit: '억' });
+
+  // 전월/전년동월/MoM/YoY
+  const prevYm = shiftYm(anchorYm, 1);
+  const yoyYm  = shiftYm(anchorYm, 12);
+  const prev = sumAt(prevYm);
+  const yoy  = sumAt(yoyYm);
+  facts.push({ label: `[보험손익] ${dim} 전월(${prevYm})`, value: prev, unit: '억' });
+  facts.push({ label: `[보험손익] ${dim} MoM 차이`, value: cur - prev, unit: '억' });
+  if (yoy !== 0) {
+    facts.push({ label: `[보험손익] ${dim} 전년동월(${yoyYm})`, value: yoy, unit: '억' });
+    facts.push({ label: `[보험손익] ${dim} YoY 차이`, value: cur - yoy, unit: '억' });
+  }
+
+  // YTD (앵커 연도, 앵커 이하 월 누적)
+  const year = anchorYm.slice(0, 4);
+  const ytd = data
+    .filter(r => r.마감년도 === year && r.마감년월 <= anchorYm && matchE(r))
+    .reduce((s, r) => s + (r.금액 || 0), 0);
+  facts.push({ label: `[보험손익] ${dim} ${year} YTD(~${anchorYm})`, value: ytd, unit: '억' });
+
+  // 회계모형별 (모형 필터 없을 때)
+  if (!ents.model) {
+    const models = [...new Set(data.map(r => r.회계모형).filter(Boolean))];
+    const byModel = models.map(m => {
+      const v = data
+        .filter(r => r.마감년월 === anchorYm && r.회계모형 === m
+          && (!ents.cat || r.구분 === ents.cat)
+          && (!ents.cat2 || r.구분2 === ents.cat2))
+        .reduce((s, r) => s + (r.금액 || 0), 0);
+      return [m, v];
+    }).filter(([, v]) => v !== 0)
+      .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+    if (byModel.length) {
+      facts.push({
+        label: `[보험손익] ${anchorYm} 회계모형별 (정렬: 절대값↓)`,
+        value: byModel.map(([m, v]) => `${m}=${fmtNum(v)}`).join(' / '),
+      });
+    }
+  }
+
+  // 차감전/차감후 손익 (cat 필터 없을 때)
+  if (!ents.cat) {
+    const subSum = (cat) => data
+      .filter(r => r.마감년월 === anchorYm && r.구분 === cat
+        && (!ents.model || r.회계모형 === ents.model))
+      .reduce((s, r) => s + (r.금액 || 0), 0);
+    const rev  = subSum('보험수익');
+    const cost = subSum('보험서비스비용');
+    const ind  = subSum('간접사업비');
+    facts.push({ label: `[보험손익] ${anchorYm} 차감전(=Σ보험수익-Σ보험서비스비용)`, value: rev - cost, unit: '억' });
+    facts.push({ label: `[보험손익] ${anchorYm} 차감후(=차감전-Σ간접사업비)`, value: rev - cost - ind, unit: '억' });
+  }
+
+  // 월별 추이 (앵커 기준 12개월)
+  const allYms = data.map(r => r.마감년월);
+  const trail = trailingYms(allYms, anchorYm, 12);
+  if (trail.length >= 2) {
+    const pairs = trail.map(m => `${m}=${fmtNum(sumAt(m))}`);
+    facts.push({
+      label: `[보험손익] ${dim} 월별 추이 (최근 12개월, 단위:억)`,
+      value: pairs.join(' / '),
+    });
+  }
+
+  // 추가 명시 월 (인풋에 두 개 이상 ym)
+  (addYms || []).forEach(ym => {
+    if (ym !== anchorYm) {
+      facts.push({ label: `[보험손익] ${dim} ${ym}`, value: sumAt(ym), unit: '억' });
+    }
+  });
+
+  return facts;
+}
+
+/** 보험금융손익 facts (rawData2_2 + rawData2_1) */
+function computeFinFacts(d2_2, d2_1, ents, anchorYm) {
+  const facts = [];
+  if (!anchorYm) return facts;
+  const matchModel = (r) => !ents.model || r.회계모형 === ents.model;
+
+  if (d2_2 && d2_2.length) {
+    // 회계모형 × 구분별 보험금융비용 (앵커월)
+    const cur = d2_2.filter(r => r.마감년월 === anchorYm && matchModel(r));
+    const groups = {};
+    cur.forEach(r => {
+      const k = `${r.회계모형}|${r.구분}`;
+      groups[k] = (groups[k] || 0) + (r.보험금융비용 || 0);
+    });
+    Object.entries(groups)
+      .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+      .forEach(([k, v]) => {
+        if (v !== 0) facts.push({ label: `[보험금융손익] ${anchorYm} ${k} 보험금융비용`, value: v, unit: '억' });
+      });
+
+    // OCI = 공시이율예실차 합계
+    const oci = cur.filter(r => r.구분 === '공시이율예실차').reduce((s, r) => s + (r.보험금융비용 || 0), 0);
+    if (oci !== 0) facts.push({ label: `[보험금융손익] ${anchorYm} OCI(공시이율예실차) 합계`, value: oci, unit: '억' });
+
+    // 전월차
+    const prevYm = shiftYm(anchorYm, 1);
+    const prevTotal = d2_2.filter(r => r.마감년월 === prevYm && matchModel(r))
+      .reduce((s, r) => s + (r.보험금융비용 || 0), 0);
+    const curTotal = cur.reduce((s, r) => s + (r.보험금융비용 || 0), 0);
+    facts.push({ label: `[보험금융손익] 보험금융비용 ${anchorYm} 합계`, value: curTotal, unit: '억' });
+    facts.push({ label: `[보험금융손익] 보험금융비용 전월(${prevYm}) 합계`, value: prevTotal, unit: '억' });
+    facts.push({ label: `[보험금융손익] 보험금융비용 MoM 차이`, value: curTotal - prevTotal, unit: '억' });
+  }
+
+  if (d2_1 && d2_1.length) {
+    // 부담이자율 — 앵커월
+    d2_1.filter(r => r.마감년월 === anchorYm && matchModel(r)).forEach(r => {
+      facts.push({ label: `[보험금융손익] ${anchorYm} ${r.회계모형} 부담이자율`, value: r.부담이자율, unit: '%' });
+    });
+  }
+
+  return facts;
+}
+
+/** 예실차 facts (rawData3) */
+function computeVarFacts(d3, ents, anchorYm) {
+  const facts = [];
+  if (!d3 || !d3.length) return facts;
+  const allYms = d3.map(r => r.마감년월);
+  const yms = [...new Set(allYms)].sort();
+  const ym = yms.includes(anchorYm) ? anchorYm : yms[yms.length - 1];
+  if (!ym) return facts;
+
+  const matchE = (r) =>
+    (!ents.model || r.회계모형 === ents.model) &&
+    (!ents.cat   || r.구분 === ents.cat);
+
+  // 구분별 variance(예상-실제) — 앵커월
+  const cur = d3.filter(r => r.마감년월 === ym && matchE(r));
+  const byCat = {};
+  cur.forEach(r => {
+    if (!byCat[r.구분]) byCat[r.구분] = { 예상: 0, 실제: 0 };
+    byCat[r.구분][r.예실구분] = (byCat[r.구분][r.예실구분] || 0) + (r.금액 || 0);
+  });
+  const ranked = Object.entries(byCat)
+    .map(([cat, v]) => [cat, (v.예상 || 0) - (v.실제 || 0), v])
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+  ranked.forEach(([cat, variance, v]) => {
+    facts.push({
+      label: `[예실차] ${ym} ${cat} variance(예상-실제)`,
+      value: variance, unit: '억',
+      detail: `예상=${fmtNum(v.예상)} / 실제=${fmtNum(v.실제)}`,
+    });
+  });
+
+  // YTD variance (앵커 연도)
+  const year = ym.slice(0, 4);
+  const ytd = d3.filter(r => r.마감년도 === year && r.마감년월 <= ym && matchE(r));
+  const ytdAgg = { 예상: 0, 실제: 0 };
+  ytd.forEach(r => { ytdAgg[r.예실구분] = (ytdAgg[r.예실구분] || 0) + (r.금액 || 0); });
+  facts.push({
+    label: `[예실차] ${year} YTD(~${ym}) 합계 variance`,
+    value: ytdAgg.예상 - ytdAgg.실제, unit: '억',
+    detail: `예상=${fmtNum(ytdAgg.예상)} / 실제=${fmtNum(ytdAgg.실제)}`,
+  });
+
+  return facts;
+}
+
+/** 모든 facts → 마크다운 블록 */
+function formatFacts(facts) {
+  if (!facts || !facts.length) return '';
+  const lines = facts.map(f => {
+    const v = typeof f.value === 'number' ? fmtNum(f.value) : f.value;
+    const tail = f.detail ? `  (${f.detail})` : '';
+    return `- ${f.label}: ${v}${f.unit || ''}${tail}`;
+  });
+  return `## [검증된 숫자] (산수가 필요한 경우 이 값을 그대로 인용. 단위:억 또는 %, 정수 반올림)\n${lines.join('\n')}\n`;
+}
+
+/** buildPrompt 내부에서 호출: 타겟 탭에 맞는 facts 한꺼번에 계산 */
+function computeFacts(question, ents, ctx, targetTab) {
+  const yms = extractYms(question);
+  const fallbackYm = ctx ? ctx.latestYm : null;
+  const anchor = resolveAnchor(yms, fallbackYm);
+  const addYms = yms.filter(y => y !== anchor);
+
+  if (targetTab === '보험금융손익') {
+    return computeFinFacts(window.rawData2_2 || [], window.rawData2_1 || [], ents, anchor);
+  }
+  if (targetTab === '예실차') {
+    return computeVarFacts(window.rawData3 || [], ents, anchor);
+  }
+  // default: 보험손익
+  return computePnlFacts(rawData, ents, anchor, addYms);
 }
 
 /**
