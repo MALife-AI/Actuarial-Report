@@ -58,7 +58,7 @@ function buildChatUI() {
       <span class="chat-header-title">Data Analyst</span>
       <div class="model-toggle">
         <button class="model-btn model-btn-active" data-model="claude">Claude</button>
-        <button class="model-btn" data-model="qwen">Qwen</button>
+        <button class="model-btn" data-model="qwen">Gemma</button>
       </div>
       <button id="chat-close">&times;</button>
     </div>
@@ -117,7 +117,7 @@ function bindChatEvents() {
       document.getElementById('chat-input').placeholder =
         selectedModel === 'claude'
           ? '데이터에 대해 질문하세요...'
-          : '데이터에 대해 질문하세요... (Qwen)';
+          : '데이터에 대해 질문하세요... (Gemma)';
     });
   });
 }
@@ -132,7 +132,7 @@ function toggleChat() {
     fab.classList.add('chat-fab-active');
     if (chatHistory.length === 0) {
       appendBot(
-        '안녕하세요! 상단의 <b>Claude / Qwen</b> 버튼으로 AI 모델을\n선택할 수 있습니다.\n' +
+        '안녕하세요! 상단의 <b>Claude / Gemma</b> 버튼으로 AI 모델을\n선택할 수 있습니다.\n' +
         '3개 탭(보험손익 / 보험금융손익 / 예실차) 데이터를 자연어로\n분석해 드립니다.\n\n' +
         '예시 질문:\n' +
         '- "당월 보험수익 금액 알려줘"\n' +
@@ -244,7 +244,7 @@ async function sendMessage() {
     scrollMessages();
   } catch (err) {
     if (err.name === 'AbortError') return;
-    const modelLabel = selectedModel === 'qwen' ? 'Qwen sLLM' : 'Claude 래퍼';
+    const modelLabel = selectedModel === 'qwen' ? 'Gemma sLLM' : 'Claude 래퍼';
     bubble.innerHTML =
       `<span style="color:#e74c3c">⚠ ${modelLabel} 연결 실패</span><br>` +
       `<span style="color:#888;font-size:12px">` +
@@ -254,7 +254,7 @@ async function sendMessage() {
       `1) <code>claude-wrapper</code> 서버 실행<br>` +
       `&nbsp;&nbsp;&nbsp;<code>cd claude-wrapper && npm run dev</code><br>` +
       (selectedModel === 'qwen'
-        ? `2) vLLM Qwen 서버가 localhost:8000에서 실행 중인지 확인<br>`
+        ? `2) vLLM Gemma 서버가 localhost:8000에서 실행 중인지 확인<br>`
         : `2) ${CLAUDE_WRAPPER_URL} 에서 동작 중인지 확인<br>`) +
       `3) 래퍼 쪽 CORS 허용 헤더 설정<br>` +
       `4) <code>window.CLAUDE_WRAPPER_URL</code> 로 다른 주소 지정 가능` +
