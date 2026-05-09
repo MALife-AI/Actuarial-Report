@@ -463,29 +463,51 @@ function buildPrompt(userQuestion) {
   const activeTab = getActiveTabName();
   const selectedYm = (document.getElementById('current-yearmonth') || {}).value || latestYm;
 
+  const targetTab = detectTargetTab(userQuestion, activeTab);
+  const recentYms = lastNMonths(rawData, 12);
+  const inRecent = (row) => recentYms.has(row.마감년월);
+
   // ===== 보험손익 탭 데이터 =====
   const ents = extractEntities(userQuestion);
   const filtered = filterByEntities(rawData, ents, ctx);
   const filterLabel = describeFilters(ents, ctx) || '필터 없음';
 
-  const pnlSummary = monthCatSummary(rawData);
-  const detailsCsv = (filtered.length > 0 && filtered.length <= 200)
+  // ===== 보험금융손익 탭 데이터 =====
+  const d2_2 = (typeof window !== 'undefined' && window.rawData2_2) || [];
+  const d2_1 = (typeof window !== 'undefined' && window.rawData2_1) || [];
+
+  // ===== 예실차 탭 데이터 =====
+  const d3 = (typeof window !== 'undefined' && window.rawData3) || [];
+
+  // 타겟 탭의 CSV만 풀로 포함 (나머지는 가벼운 placeholder)
+  const wantPnl = targetTab === '보험손익';
+  const wantFin = targetTab === '보험금융손익';
+  const wantVar = targetTab === '예실차';
+  const placeholder = (label) => `(${label} 관련 질문이면 별도 질의)`;
+
+  const pnlSummary = wantPnl
+    ? monthCatSummary(rawData.filter(inRecent))
+    : placeholder('보험손익');
+  const detailsCsv = wantPnl && filtered.length > 0 && filtered.length <= 100
     ? toCsv(filtered)
     : null;
   const detailBlock = detailsCsv
     ? `\n\n## [보험손익] 질문 관련 상세 행 (필터: ${filterLabel}, ${filtered.length}건)\n\`\`\`csv\n${detailsCsv}\n\`\`\``
     : '';
 
-  // ===== 보험금융손익 탭 데이터 =====
-  const d2_2 = (typeof window !== 'undefined' && window.rawData2_2) || [];
-  const d2_1 = (typeof window !== 'undefined' && window.rawData2_1) || [];
-  const finCostCsv = d2_2.length ? finCostSummary(d2_2) : '(데이터 없음)';
-  const finRateCsv = d2_1.length ? finRateSummary(d2_1) : '(데이터 없음)';
+  const finCostCsv = wantFin && d2_2.length
+    ? finCostSummary(d2_2.filter(inRecent))
+    : placeholder('보험금융손익');
+  const finRateCsv = wantFin && d2_1.length
+    ? finRateSummary(d2_1.filter(inRecent))
+    : placeholder('보험금융손익');
 
-  // ===== 예실차 탭 데이터 =====
-  const d3 = (typeof window !== 'undefined' && window.rawData3) || [];
-  const varSummaryCsv = d3.length ? varianceSummary(d3) : '(데이터 없음)';
-  const varProductCsv = d3.length ? varProductLatest(d3, selectedYm) : '(데이터 없음)';
+  const varSummaryCsv = wantVar && d3.length
+    ? varianceSummary(d3.filter(inRecent))
+    : placeholder('예실차');
+  const varProductCsv = wantVar && d3.length
+    ? varProductLatest(d3, selectedYm)
+    : placeholder('예실차');
 
   return `당신은 미래에셋 Actuarial Report 대시보드의 데이터 분석 챗봇입니다.
 아래 "데이터"만 근거로 정확한 숫자를 답하세요. 외부 파일 Read 하지 마세요.
@@ -533,27 +555,28 @@ function buildPrompt(userQuestion) {
 - 원본 CSV와 값이 다르면 필터(선택월/최근12개월/코호트)가 이미 반영된 결과
 ${snapshotActiveScreen()}
 
-## [보험손익] 월별 × 구분 합계 (전 기간)
+## 데이터 (질문 타겟 탭: **${targetTab}** — 해당 탭만 풀 포함, 최근 12개월)
+### [보험손익] 월별 × 구분 합계
 \`\`\`csv
 ${pnlSummary}
 \`\`\`${detailBlock}
 
-## [보험금융손익] 월별 × 회계모형 × 구분 — 보험금융비용 합계
+### [보험금융손익] 월별 × 회계모형 × 구분 — 보험금융비용
 \`\`\`csv
 ${finCostCsv}
 \`\`\`
 
-## [보험금융손익] 월별 × 회계모형 — 부담이자율 (sample_data2_1)
+### [보험금융손익] 월별 × 회계모형 — 부담이자율
 \`\`\`csv
 ${finRateCsv}
 \`\`\`
 
-## [예실차] 월별 × 구분 × 예실구분 — 금액 합계
+### [예실차] 월별 × 구분 × 예실구분 — 금액
 \`\`\`csv
 ${varSummaryCsv}
 \`\`\`
 
-## [예실차] 선택월(${selectedYm}) × 상품유형 × 구분 × 예실구분 — 금액
+### [예실차] 선택월(${selectedYm}) × 상품유형 × 구분 × 예실구분
 \`\`\`csv
 ${varProductCsv}
 \`\`\`
@@ -576,6 +599,20 @@ function getActiveTabName() {
   return '보험손익';
 }
 
+/** 질문 키워드 + 활성 탭으로 어느 탭 데이터로 답할지 결정 */
+function detectTargetTab(q, activeTab) {
+  if (/예실차|예상.{0,3}실제|지급보험금|유지비|신계약비|코호트|variance/i.test(q)) return '예실차';
+  if (/보험금융|부담\s*이자|이자부리|위험경감|공시이율예실차|\bOCI\b|\bNP\b|\bIDP\b|\bVFA\b/i.test(q)) return '보험금융손익';
+  if (/보험수익|보험서비스비용|보험손익|간접사업비|CSM\s*상각|RA\s*변동/.test(q)) return '보험손익';
+  return activeTab;
+}
+
+/** 데이터 최신 마감년월부터 거꾸로 N개월의 마감년월 Set 반환 */
+function lastNMonths(rows, n) {
+  const yms = [...new Set(rows.map(r => r.마감년월).filter(Boolean))].sort();
+  return new Set(yms.slice(-n));
+}
+
 /**
  * 현재 화면(활성 탭)에 렌더된 표들을 텍스트로 수집.
  * - 패널 제목(h2) + 태그(period-tag) + 표 내용을 마크다운 파이프 테이블처럼 구성
@@ -586,7 +623,7 @@ function snapshotActiveScreen() {
   if (!panel) return '(활성 탭 없음)';
 
   const MAX_CELL = 40;
-  const MAX_TOTAL = 12000;
+  const MAX_TOTAL = 6000;
   const clip = (s) => {
     const t = String(s).replace(/\s+/g, ' ').trim();
     return t.length > MAX_CELL ? t.slice(0, MAX_CELL) + '…' : t;
